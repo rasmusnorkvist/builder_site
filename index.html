@@ -138,6 +138,8 @@ const CITY_COUNTY = {"Aberdeen": "Grays Harbor", "Airway Heights": "Spokane", "A
 let expandedIds = new Set();
 let activeFilters = { 'Company type': [], 'Building type': [], City: [] };
 let lastFilteredRows = [];
+const activeDropdowns = [];
+let companyTypeDropdown, buildingTypeDropdown, cityDropdown;
 
 render();
 renderNotes();
@@ -256,8 +258,6 @@ function uniqueVals(key) {
   return Array.from(s).sort();
 }
 
-const activeDropdowns = [];
-
 function createCheckboxDropdown({ container, label, options, initialSelected, searchable, onChange, formatLabel }) {
   const selected = new Set(initialSelected || []);
   let isOpen = false;
@@ -330,8 +330,6 @@ document.addEventListener('click', (e) => {
     if (dd.container && !dd.container.contains(e.target)) dd.close();
   });
 });
-
-let companyTypeDropdown, buildingTypeDropdown, cityDropdown;
 
 function renderFilters() {
   [companyTypeDropdown, buildingTypeDropdown, cityDropdown].forEach(dd => dd && forgetDropdown(dd));
