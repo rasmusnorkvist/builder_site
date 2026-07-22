@@ -16,6 +16,8 @@
   .setup { background: #FFF8E1; border: 1px solid #E8D9A0; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 14px; }
   .setup input { width: 100%; margin: 4px 0 10px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
   .toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .list-controls { display: flex; gap: 8px; margin-bottom: 6px; }
+  .list-controls button { font-size: 12px; padding: 4px 10px; }
   input[type=text] { flex: 1; min-width: 180px; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; }
   button { padding: 8px 14px; border: 1px solid #888; border-radius: 6px; background: #fff; cursor: pointer; }
   button:hover { border-color: var(--accent-secondary); color: var(--accent-secondary); }
@@ -91,14 +93,16 @@
   <div class="offline-banner" id="offlineBanner"></div>
   <div class="toolbar">
     <input type="text" id="search" placeholder="Search builders...">
-    <button id="clearFiltersBtn">Clear filters</button>
-    <button id="collapseAllBtn">Collapse all</button>
     <button class="primary" id="addBtn">Add builder</button>
     <button id="refreshBtn">Refresh</button>
     <button id="exportBtn">Export to Excel</button>
     <button id="connectToggleBtn">Connect to Airtable</button>
   </div>
   <div class="status" id="status"></div>
+  <div class="list-controls">
+    <button id="clearFiltersBtn">Clear filters</button>
+    <button id="collapseAllBtn">Collapse all</button>
+  </div>
   <table id="table">
     <thead><tr>
       <th class="chev-col"></th>
@@ -106,7 +110,6 @@
       <th><div id="ddCompanyType"></div></th>
       <th><div id="ddCity"></div></th>
       <th><div id="ddBuildingType"></div></th>
-      <th>Contacts</th>
       <th></th>
     </tr></thead>
     <tbody id="tbody"></tbody>
@@ -602,13 +605,13 @@ function renderTable() {
     const hay = [f.Name, f['Company type'], toCitiesArray(f.Cities).join(' '), toCitiesArray(f['Building type']).join(' '), contactBlob].join(' ').toLowerCase();
     return hay.includes(q);
   });
+  rows.sort((a, b) => (a.fields.Name || '').localeCompare(b.fields.Name || ''));
   lastFilteredRows = rows;
   tbody.innerHTML = rows.map(r => {
     const f = r.fields;
     const cities = toCitiesArray(f.Cities);
     const isOpen = expandedIds.has(r.id);
     const preview = cities.length > 4 ? cities.slice(0,3).join(', ') + ` +${cities.length-3} more` : cities.join(', ');
-    const contactCount = [1,2,3,4].filter(n => f[`Contact ${n} Name`]).length;
     let expandHtml = '';
     if (isOpen) {
       const cityHtml = groupByCounty(cities).map(([county, list]) =>
@@ -619,13 +622,13 @@ function renderTable() {
         return `<tr>
           <td style="padding:3px 8px 3px 0; font-weight:500;">${esc(name)}</td>
           <td style="padding:3px 8px; color:var(--text-secondary,#666);">${esc(f[`Contact ${n} Role`])}</td>
-          <td style="padding:3px 8px;">${esc(f[`Contact ${n} Phone`])}</td>
+          <td style="padding:3px 8px; white-space:nowrap;">${esc(f[`Contact ${n} Phone`])}</td>
           <td style="padding:3px 0;">${f[`Contact ${n} Email`] ? `<a href="mailto:${esc(f[`Contact ${n} Email`])}" onclick="event.stopPropagation()">${esc(f[`Contact ${n} Email`])}</a>` : ''}</td>
         </tr>`;
       }).join('');
       const contactHtml = contactRows ? `<table style="font-size:13px; border-collapse:collapse;"><tbody>${contactRows}</tbody></table>` : 'None';
       const doc = f['Document link'] ? `<div style="margin-top:8px;"><a href="${f['Document link']}" target="_blank">Open document</a></div>` : '';
-      expandHtml = `<tr class="expand-row"><td colspan="7">
+      expandHtml = `<tr class="expand-row"><td colspan="6">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
           <div><strong>Cities (${cities.length})</strong><div style="margin-top:6px;">${cityHtml || 'None'}</div></div>
           <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml || 'None'}</div>${doc}</div>
@@ -637,9 +640,8 @@ function renderTable() {
       <td class="chev">${isOpen ? '▾' : '▸'}</td>
       <td><a href="${builderWebsite(f)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(f.Name)}</a></td>
       <td>${esc(f['Company type'])}</td>
-      <td>${esc(preview)} <span class="badge">${cities.length}</span></td>
+      <td>${esc(preview)}</td>
       <td>${esc(toCitiesArray(f['Building type']).join(', '))}</td>
-      <td><span class="badge">${contactCount} contact${contactCount===1?'':'s'}</span></td>
       <td></td>
     </tr>${expandHtml}`;
   }).join('');
