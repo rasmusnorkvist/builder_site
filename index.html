@@ -31,7 +31,7 @@
   .field label { display: block; font-size: 12px; color: #666; margin-bottom: 3px; }
   .field input, .field textarea { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
   .field .dropdown-toggle { width: 100%; box-sizing: border-box; }
-  .filters { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  th .dropdown-box { font-weight: normal; }
   .dropdown-box { position: relative; }
   .dropdown-toggle { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; min-width: 140px; text-align: left; font: inherit; }
   .dropdown-panel { position: absolute; top: 100%; left: 0; z-index: 20; display: flex; flex-direction: column; background: #fff; border: 1px solid #ccc; border-radius: 6px; margin-top: 4px; width: 240px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
@@ -91,16 +91,24 @@
   <div class="offline-banner" id="offlineBanner"></div>
   <div class="toolbar">
     <input type="text" id="search" placeholder="Search builders...">
-    <button id="filtersToggleBtn">Filters ▾</button>
+    <button id="clearFiltersBtn">Clear filters</button>
+    <button id="collapseAllBtn">Collapse all</button>
     <button class="primary" id="addBtn">Add builder</button>
     <button id="refreshBtn">Refresh</button>
     <button id="exportBtn">Export to Excel</button>
     <button id="connectToggleBtn">Connect to Airtable</button>
   </div>
-  <div class="filters" id="filters" style="display:none;"></div>
   <div class="status" id="status"></div>
   <table id="table">
-    <thead><tr><th class="chev-col"></th><th>Name</th><th>Company type</th><th>Cities</th><th>Building type</th><th>Contacts</th><th></th></tr></thead>
+    <thead><tr>
+      <th class="chev-col"></th>
+      <th>Name</th>
+      <th><div id="ddCompanyType"></div></th>
+      <th><div id="ddCity"></div></th>
+      <th><div id="ddBuildingType"></div></th>
+      <th>Contacts</th>
+      <th></th>
+    </tr></thead>
     <tbody id="tbody"></tbody>
   </table>
 
@@ -121,12 +129,9 @@ document.getElementById('connectToggleBtn').onclick = () => {
   box.style.display = box.style.display === 'none' ? 'block' : 'none';
 };
 
-document.getElementById('filtersToggleBtn').onclick = () => {
-  const box = document.getElementById('filters');
-  const btn = document.getElementById('filtersToggleBtn');
-  const isHidden = box.style.display === 'none';
-  box.style.display = isHidden ? 'flex' : 'none';
-  btn.textContent = isHidden ? 'Filters ▴' : 'Filters ▾';
+document.getElementById('collapseAllBtn').onclick = () => {
+  expandedIds.clear();
+  renderTable();
 };
 
 let API_KEY = '', BASE_ID = '', TABLE = '', NOTES_TABLE = '';
@@ -330,10 +335,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     </label>`;
   }
 
-  function renderInner() {
-    const optionsEl = container.querySelector('.dropdown-options');
-    const prevScrollTop = optionsEl ? optionsEl.scrollTop : 0;
-
+  function buildOptionsMarkup() {
     let optionsHtml;
     let seeMoreHtml = '';
     if (!options.length) {
@@ -371,31 +373,10 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     } else {
       optionsHtml = options.map(optionRowHtml).join('');
     }
+    return { optionsHtml, seeMoreHtml };
+  }
 
-    const actionsHtml = showSelectAll ? `
-      <div class="dropdown-actions">
-        <button type="button" class="dd-toggle-all">${allVisibleSelected() ? 'Deselect all' : 'Select all'}</button>
-      </div>` : '';
-
-    container.innerHTML = `
-      <button type="button" class="dropdown-toggle">${esc(summary())} ▾</button>
-      <div class="dropdown-panel" style="display:${isOpen ? 'flex' : 'none'};">
-        ${searchable ? `<input type="text" class="dropdown-search" placeholder="Search...">` : ''}
-        ${actionsHtml}
-        <div class="dropdown-options">${optionsHtml}</div>
-        ${seeMoreHtml}
-      </div>`;
-
-    const newOptionsEl = container.querySelector('.dropdown-options');
-    if (newOptionsEl) newOptionsEl.scrollTop = prevScrollTop;
-
-    container.querySelector('.dropdown-toggle').onclick = (e) => {
-      e.stopPropagation();
-      isOpen = !isOpen;
-      renderInner();
-      const search = container.querySelector('.dropdown-search');
-      if (isOpen && search) search.focus();
-    };
+  function wireOptionEvents() {
     container.querySelectorAll('.dropdown-option input').forEach(cb => {
       cb.onclick = (e) => e.stopPropagation();
       cb.onchange = () => {
@@ -425,6 +406,9 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         renderInner();
       };
     });
+  }
+
+  function wireSeeMoreButton() {
     const seeMoreBtn = container.querySelector('.dd-see-more');
     if (seeMoreBtn) {
       seeMoreBtn.onclick = (e) => {
@@ -433,6 +417,43 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         renderInner();
       };
     }
+  }
+
+  // Full rebuild: used for everything except typing in the search box (open/close, checkbox
+  // clicks, group toggles, select-all, see-more). Typing uses refreshOptionsOnly() instead so the
+  // search <input> itself is never destroyed mid-keystroke — that was the actual cause of only
+  // being able to type one letter at a time (rebuilding it on every keystroke silently lost focus).
+  function renderInner() {
+    const optionsEl = container.querySelector('.dropdown-options');
+    const prevScrollTop = optionsEl ? optionsEl.scrollTop : 0;
+    const { optionsHtml, seeMoreHtml } = buildOptionsMarkup();
+
+    const actionsHtml = showSelectAll ? `
+      <div class="dropdown-actions">
+        <button type="button" class="dd-toggle-all">${allVisibleSelected() ? 'Deselect all' : 'Select all'}</button>
+      </div>` : '';
+
+    container.innerHTML = `
+      <button type="button" class="dropdown-toggle">${esc(summary())} ▾</button>
+      <div class="dropdown-panel" style="display:${isOpen ? 'flex' : 'none'};">
+        ${searchable ? `<input type="text" class="dropdown-search" placeholder="Search...">` : ''}
+        ${actionsHtml}
+        <div class="dropdown-options">${optionsHtml}</div>
+        <div class="dd-see-more-slot">${seeMoreHtml}</div>
+      </div>`;
+
+    const newOptionsEl = container.querySelector('.dropdown-options');
+    if (newOptionsEl) newOptionsEl.scrollTop = prevScrollTop;
+
+    container.querySelector('.dropdown-toggle').onclick = (e) => {
+      e.stopPropagation();
+      isOpen = !isOpen;
+      renderInner();
+      const search = container.querySelector('.dropdown-search');
+      if (isOpen && search) search.focus();
+    };
+    wireOptionEvents();
+    wireSeeMoreButton();
     const toggleAllBtn = container.querySelector('.dd-toggle-all');
     if (toggleAllBtn) {
       toggleAllBtn.onclick = (e) => {
@@ -452,15 +473,30 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
       search.value = searchQuery;
       search.oninput = () => {
         searchQuery = search.value;
-        const cursorPos = search.selectionStart;
-        renderInner();
-        const newSearch = container.querySelector('.dropdown-search');
-        if (newSearch) {
-          newSearch.focus();
-          if (newSearch.setSelectionRange) newSearch.setSelectionRange(cursorPos, cursorPos);
-        }
+        refreshOptionsOnly();
       };
     }
+  }
+
+  // Lightweight update for search-as-you-type: only touches the options list, the see-more
+  // slot, and the toggle-all button label. Never recreates the search <input>, so focus and
+  // cursor position are simply never disturbed — no restoration hack needed.
+  function refreshOptionsOnly() {
+    const optionsEl = container.querySelector('.dropdown-options');
+    const prevScrollTop = optionsEl ? optionsEl.scrollTop : 0;
+    const { optionsHtml, seeMoreHtml } = buildOptionsMarkup();
+    if (optionsEl) {
+      optionsEl.innerHTML = optionsHtml;
+      optionsEl.scrollTop = prevScrollTop;
+    }
+    wireOptionEvents();
+    const seeMoreSlot = container.querySelector('.dd-see-more-slot');
+    if (seeMoreSlot) {
+      seeMoreSlot.innerHTML = seeMoreHtml;
+      wireSeeMoreButton();
+    }
+    const toggleAllBtn = container.querySelector('.dd-toggle-all');
+    if (toggleAllBtn) toggleAllBtn.textContent = allVisibleSelected() ? 'Deselect all' : 'Select all';
   }
 
   container.classList.add('dropdown-box');
@@ -497,12 +533,6 @@ function countiesWithBuilders() {
 
 function renderFilters() {
   [companyTypeDropdown, buildingTypeDropdown, cityDropdown].forEach(dd => dd && forgetDropdown(dd));
-  const box = document.getElementById('filters');
-  box.innerHTML = `
-    <div id="ddCompanyType"></div>
-    <div id="ddBuildingType"></div>
-    <div id="ddCity"></div>
-    <button id="clearFilters">Clear filters</button>`;
 
   companyTypeDropdown = createCheckboxDropdown({
     container: document.getElementById('ddCompanyType'),
@@ -534,7 +564,7 @@ function renderFilters() {
     onChange: (vals) => { activeFilters.City = vals; renderTable(); }
   });
 
-  document.getElementById('clearFilters').onclick = () => {
+  document.getElementById('clearFiltersBtn').onclick = () => {
     activeFilters['Company type'] = [];
     activeFilters['Building type'] = [];
     activeFilters.City = [];
