@@ -31,7 +31,9 @@
   .dropdown-empty { padding: 6px 12px; font-size: 13px; color: #888; }
   .dropdown-actions { display: flex; gap: 6px; padding: 8px 8px 0; }
   .dropdown-actions button { flex: 1; font-size: 12px; padding: 4px 6px; }
-  .dropdown-group-label { padding: 8px 12px 2px; font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
+  .dropdown-group-label { padding: 6px 12px; font-size: 12px; font-weight: 600; color: #555; cursor: pointer; }
+  .dropdown-group-label:hover { background: #f5f5f5; }
+  .dd-see-more { display: block; width: calc(100% - 16px); margin: 4px 8px 8px; font-size: 12px; padding: 4px 6px; }
   .expand-row td { background: #FAFAF8; padding: 14px 20px; }
   .badge { display: inline-block; background: #eee; border-radius: 20px; padding: 2px 8px; font-size: 12px; color: #555; }
   .chev, .chev-col { width: 24px; text-align: center; padding-left: 10px; padding-right: 4px; }
@@ -261,10 +263,12 @@ function uniqueVals(key) {
   return Array.from(s).sort();
 }
 
-function createCheckboxDropdown({ container, label, options, initialSelected, searchable, onChange, formatLabel, groupBy, showSelectAll }) {
+function createCheckboxDropdown({ container, label, options, initialSelected, searchable, onChange, formatLabel, groupBy, showSelectAll, defaultGroups }) {
   const selected = new Set(initialSelected || []);
   let isOpen = false;
   let searchQuery = '';
+  let expandedGroups = new Set();
+  let showAllGroups = false;
   const displayText = formatLabel || (opt => opt);
 
   function summary() {
@@ -279,8 +283,24 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     return false;
   }
 
+  function buildGroups() {
+    const groups = {};
+    options.forEach(opt => { const g = groupBy(opt); (groups[g] = groups[g] || []).push(opt); });
+    return groups;
+  }
+
+  function computeVisibleGroupNames(groups) {
+    const allNames = Object.keys(groups).sort();
+    if (searchQuery) return allNames.filter(g => groups[g].some(isVisible));
+    if (showAllGroups || !defaultGroups || !defaultGroups.size) return allNames;
+    return allNames.filter(g => defaultGroups.has(g));
+  }
+
   function visibleOptions() {
-    return options.filter(isVisible);
+    if (!groupBy) return options.filter(isVisible);
+    const groups = buildGroups();
+    const names = new Set(computeVisibleGroupNames(groups));
+    return options.filter(opt => names.has(groupBy(opt)) && isVisible(opt));
   }
 
   function optionRowHtml(opt) {
@@ -292,19 +312,32 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
 
   function renderInner() {
     let optionsHtml;
+    let seeMoreHtml = '';
     if (!options.length) {
       optionsHtml = `<div class="dropdown-empty">No options</div>`;
     } else if (groupBy) {
-      const groups = {};
-      options.forEach(opt => { const g = groupBy(opt); (groups[g] = groups[g] || []).push(opt); });
-      optionsHtml = Object.keys(groups).sort().map(g => {
+      const groups = buildGroups();
+      const visibleNames = computeVisibleGroupNames(groups);
+      optionsHtml = visibleNames.map(g => {
         const groupOptions = groups[g];
-        const anyVisible = groupOptions.some(isVisible);
-        return `<div class="dropdown-group" style="${anyVisible ? '' : 'display:none;'}">
-          <div class="dropdown-group-label">${esc(g)}</div>
-          ${groupOptions.map(optionRowHtml).join('')}
+        const selectedCount = groupOptions.filter(c => selected.has(c)).length;
+        const isExpanded = !!searchQuery || expandedGroups.has(g) || selectedCount > 0;
+        const headerLabel = selectedCount ? `${g} (${selectedCount})` : g;
+        return `<div class="dropdown-group">
+          <div class="dropdown-group-label" data-group="${esc(g)}">${isExpanded ? '▾' : '▸'} ${esc(headerLabel)}</div>
+          ${isExpanded ? groupOptions.map(optionRowHtml).join('') : ''}
         </div>`;
       }).join('');
+
+      if (!searchQuery && defaultGroups && defaultGroups.size) {
+        const allNames = Object.keys(groups).sort();
+        const hiddenCount = allNames.filter(g => !defaultGroups.has(g)).length;
+        if (hiddenCount > 0) {
+          seeMoreHtml = showAllGroups
+            ? `<button type="button" class="dd-see-more">Show fewer counties</button>`
+            : `<button type="button" class="dd-see-more">See all counties (+${hiddenCount})</button>`;
+        }
+      }
     } else {
       optionsHtml = options.map(optionRowHtml).join('');
     }
@@ -321,6 +354,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         ${searchable ? `<input type="text" class="dropdown-search" placeholder="Search...">` : ''}
         ${actionsHtml}
         <div class="dropdown-options">${optionsHtml}</div>
+        ${seeMoreHtml}
       </div>`;
 
     container.querySelector('.dropdown-toggle').onclick = (e) => {
@@ -340,6 +374,22 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         if (search) search.focus();
       };
     });
+    container.querySelectorAll('.dropdown-group-label').forEach(gl => {
+      gl.onclick = (e) => {
+        e.stopPropagation();
+        const g = gl.dataset.group;
+        expandedGroups.has(g) ? expandedGroups.delete(g) : expandedGroups.add(g);
+        renderInner();
+      };
+    });
+    const seeMoreBtn = container.querySelector('.dd-see-more');
+    if (seeMoreBtn) {
+      seeMoreBtn.onclick = (e) => {
+        e.stopPropagation();
+        showAllGroups = !showAllGroups;
+        renderInner();
+      };
+    }
     const selectAllBtn = container.querySelector('.dd-select-all');
     if (selectAllBtn) {
       selectAllBtn.onclick = (e) => {
@@ -392,6 +442,15 @@ document.addEventListener('click', (e) => {
   });
 });
 
+function countiesWithBuilders() {
+  const set = new Set();
+  records.forEach(r => toCitiesArray(r.fields.Cities).forEach(c => {
+    const county = CITY_COUNTY[c];
+    if (county) set.add(county);
+  }));
+  return set;
+}
+
 function renderFilters() {
   [companyTypeDropdown, buildingTypeDropdown, cityDropdown].forEach(dd => dd && forgetDropdown(dd));
   const box = document.getElementById('filters');
@@ -425,6 +484,7 @@ function renderFilters() {
     searchable: true,
     groupBy: (c) => CITY_COUNTY[c] || 'Other',
     showSelectAll: true,
+    defaultGroups: countiesWithBuilders(),
     onChange: (vals) => { activeFilters.City = vals; renderTable(); }
   });
 
