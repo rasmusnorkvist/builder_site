@@ -29,6 +29,9 @@
   .dropdown-option { display: flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
   .dropdown-option:hover { background: #f5f5f5; }
   .dropdown-empty { padding: 6px 12px; font-size: 13px; color: #888; }
+  .dropdown-actions { display: flex; gap: 6px; padding: 8px 8px 0; }
+  .dropdown-actions button { flex: 1; font-size: 12px; padding: 4px 6px; }
+  .dropdown-group-label { padding: 8px 12px 2px; font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
   .expand-row td { background: #FAFAF8; padding: 14px 20px; }
   .badge { display: inline-block; background: #eee; border-radius: 20px; padding: 2px 8px; font-size: 12px; color: #555; }
   .chev, .chev-col { width: 24px; text-align: center; padding-left: 10px; padding-right: 4px; }
@@ -258,7 +261,7 @@ function uniqueVals(key) {
   return Array.from(s).sort();
 }
 
-function createCheckboxDropdown({ container, label, options, initialSelected, searchable, onChange, formatLabel }) {
+function createCheckboxDropdown({ container, label, options, initialSelected, searchable, onChange, formatLabel, groupBy, showSelectAll }) {
   const selected = new Set(initialSelected || []);
   let isOpen = false;
   let searchQuery = '';
@@ -268,19 +271,55 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     return selected.size ? `${label} (${selected.size})` : `${label}: all`;
   }
 
+  function isVisible(opt) {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    if (displayText(opt).toLowerCase().includes(q)) return true;
+    if (groupBy && groupBy(opt).toLowerCase().includes(q)) return true;
+    return false;
+  }
+
+  function visibleOptions() {
+    return options.filter(isVisible);
+  }
+
+  function optionRowHtml(opt) {
+    const text = displayText(opt);
+    return `<label class="dropdown-option" style="display:${isVisible(opt) ? 'flex' : 'none'};">
+      <input type="checkbox" value="${esc(opt)}" ${selected.has(opt) ? 'checked' : ''}> ${esc(text)}
+    </label>`;
+  }
+
   function renderInner() {
-    const optionsHtml = options.length ? options.map(opt => {
-      const text = displayText(opt);
-      const visible = !searchQuery || text.toLowerCase().includes(searchQuery.toLowerCase());
-      return `<label class="dropdown-option" style="display:${visible ? 'flex' : 'none'};">
-        <input type="checkbox" value="${esc(opt)}" ${selected.has(opt) ? 'checked' : ''}> ${esc(text)}
-      </label>`;
-    }).join('') : `<div class="dropdown-empty">No options</div>`;
+    let optionsHtml;
+    if (!options.length) {
+      optionsHtml = `<div class="dropdown-empty">No options</div>`;
+    } else if (groupBy) {
+      const groups = {};
+      options.forEach(opt => { const g = groupBy(opt); (groups[g] = groups[g] || []).push(opt); });
+      optionsHtml = Object.keys(groups).sort().map(g => {
+        const groupOptions = groups[g];
+        const anyVisible = groupOptions.some(isVisible);
+        return `<div class="dropdown-group" style="${anyVisible ? '' : 'display:none;'}">
+          <div class="dropdown-group-label">${esc(g)}</div>
+          ${groupOptions.map(optionRowHtml).join('')}
+        </div>`;
+      }).join('');
+    } else {
+      optionsHtml = options.map(optionRowHtml).join('');
+    }
+
+    const actionsHtml = showSelectAll ? `
+      <div class="dropdown-actions">
+        <button type="button" class="dd-select-all">Select all</button>
+        <button type="button" class="dd-deselect-all">Deselect all</button>
+      </div>` : '';
 
     container.innerHTML = `
       <button type="button" class="dropdown-toggle">${esc(summary())} ▾</button>
       <div class="dropdown-panel" style="display:${isOpen ? 'flex' : 'none'};">
         ${searchable ? `<input type="text" class="dropdown-search" placeholder="Search...">` : ''}
+        ${actionsHtml}
         <div class="dropdown-options">${optionsHtml}</div>
       </div>`;
 
@@ -301,6 +340,28 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         if (search) search.focus();
       };
     });
+    const selectAllBtn = container.querySelector('.dd-select-all');
+    if (selectAllBtn) {
+      selectAllBtn.onclick = (e) => {
+        e.stopPropagation();
+        visibleOptions().forEach(opt => selected.add(opt));
+        onChange(Array.from(selected));
+        renderInner();
+        const search = container.querySelector('.dropdown-search');
+        if (search) search.focus();
+      };
+    }
+    const deselectAllBtn = container.querySelector('.dd-deselect-all');
+    if (deselectAllBtn) {
+      deselectAllBtn.onclick = (e) => {
+        e.stopPropagation();
+        visibleOptions().forEach(opt => selected.delete(opt));
+        onChange(Array.from(selected));
+        renderInner();
+        const search = container.querySelector('.dropdown-search');
+        if (search) search.focus();
+      };
+    }
     const search = container.querySelector('.dropdown-search');
     if (search) {
       search.value = searchQuery;
@@ -362,6 +423,8 @@ function renderFilters() {
     options: Object.keys(CITY_COUNTY).sort(),
     initialSelected: activeFilters.City,
     searchable: true,
+    groupBy: (c) => CITY_COUNTY[c] || 'Other',
+    showSelectAll: true,
     onChange: (vals) => { activeFilters.City = vals; renderTable(); }
   });
 
