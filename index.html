@@ -31,8 +31,10 @@
   .dropdown-empty { padding: 6px 12px; font-size: 13px; color: #888; }
   .dropdown-actions { display: flex; gap: 6px; padding: 8px 8px 0; }
   .dropdown-actions button { flex: 1; font-size: 12px; padding: 4px 6px; }
-  .dropdown-group-label { padding: 6px 12px; font-size: 12px; font-weight: 600; color: #555; cursor: pointer; }
-  .dropdown-group-label:hover { background: #f5f5f5; }
+  .dropdown-group-label { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: #555; }
+  .dropdown-group-toggle { cursor: pointer; color: #888; }
+  .dropdown-group-name { cursor: pointer; flex: 1; }
+  .dropdown-group-name:hover, .dropdown-group-toggle:hover { color: #1B4B5A; }
   .dd-see-more { display: block; width: calc(100% - 16px); margin: 4px 8px 8px; font-size: 12px; padding: 4px 6px; }
   .expand-row td { background: #FAFAF8; padding: 14px 20px; }
   .badge { display: inline-block; background: #eee; border-radius: 20px; padding: 2px 8px; font-size: 12px; color: #555; }
@@ -303,6 +305,11 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     return options.filter(opt => names.has(groupBy(opt)) && isVisible(opt));
   }
 
+  function allVisibleSelected() {
+    const vis = visibleOptions();
+    return vis.length > 0 && vis.every(opt => selected.has(opt));
+  }
+
   function optionRowHtml(opt) {
     const text = displayText(opt);
     return `<label class="dropdown-option" style="display:${isVisible(opt) ? 'flex' : 'none'};">
@@ -311,6 +318,9 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
   }
 
   function renderInner() {
+    const optionsEl = container.querySelector('.dropdown-options');
+    const prevScrollTop = optionsEl ? optionsEl.scrollTop : 0;
+
     let optionsHtml;
     let seeMoreHtml = '';
     if (!options.length) {
@@ -324,7 +334,10 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         const isExpanded = !!searchQuery || expandedGroups.has(g) || selectedCount > 0;
         const headerLabel = selectedCount ? `${g} (${selectedCount})` : g;
         return `<div class="dropdown-group">
-          <div class="dropdown-group-label" data-group="${esc(g)}">${isExpanded ? '▾' : '▸'} ${esc(headerLabel)}</div>
+          <div class="dropdown-group-label">
+            <span class="dropdown-group-toggle" data-group="${esc(g)}">${isExpanded ? '▾' : '▸'}</span>
+            <span class="dropdown-group-name" data-group="${esc(g)}" title="Click to select/deselect all in ${esc(g)}">${esc(headerLabel)}</span>
+          </div>
           ${isExpanded ? groupOptions.map(optionRowHtml).join('') : ''}
         </div>`;
       }).join('');
@@ -344,8 +357,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
 
     const actionsHtml = showSelectAll ? `
       <div class="dropdown-actions">
-        <button type="button" class="dd-select-all">Select all</button>
-        <button type="button" class="dd-deselect-all">Deselect all</button>
+        <button type="button" class="dd-toggle-all">${allVisibleSelected() ? 'Deselect all' : 'Select all'}</button>
       </div>` : '';
 
     container.innerHTML = `
@@ -356,6 +368,9 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         <div class="dropdown-options">${optionsHtml}</div>
         ${seeMoreHtml}
       </div>`;
+
+    const newOptionsEl = container.querySelector('.dropdown-options');
+    if (newOptionsEl) newOptionsEl.scrollTop = prevScrollTop;
 
     container.querySelector('.dropdown-toggle').onclick = (e) => {
       e.stopPropagation();
@@ -374,11 +389,23 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         if (search) search.focus();
       };
     });
-    container.querySelectorAll('.dropdown-group-label').forEach(gl => {
-      gl.onclick = (e) => {
+    container.querySelectorAll('.dropdown-group-toggle').forEach(el => {
+      el.onclick = (e) => {
         e.stopPropagation();
-        const g = gl.dataset.group;
+        const g = el.dataset.group;
         expandedGroups.has(g) ? expandedGroups.delete(g) : expandedGroups.add(g);
+        renderInner();
+      };
+    });
+    container.querySelectorAll('.dropdown-group-name').forEach(el => {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        const g = el.dataset.group;
+        const groups = buildGroups();
+        const groupOptions = groups[g] || [];
+        const allSelected = groupOptions.length > 0 && groupOptions.every(c => selected.has(c));
+        groupOptions.forEach(c => allSelected ? selected.delete(c) : selected.add(c));
+        onChange(Array.from(selected));
         renderInner();
       };
     });
@@ -390,22 +417,13 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         renderInner();
       };
     }
-    const selectAllBtn = container.querySelector('.dd-select-all');
-    if (selectAllBtn) {
-      selectAllBtn.onclick = (e) => {
+    const toggleAllBtn = container.querySelector('.dd-toggle-all');
+    if (toggleAllBtn) {
+      toggleAllBtn.onclick = (e) => {
         e.stopPropagation();
-        visibleOptions().forEach(opt => selected.add(opt));
-        onChange(Array.from(selected));
-        renderInner();
-        const search = container.querySelector('.dropdown-search');
-        if (search) search.focus();
-      };
-    }
-    const deselectAllBtn = container.querySelector('.dd-deselect-all');
-    if (deselectAllBtn) {
-      deselectAllBtn.onclick = (e) => {
-        e.stopPropagation();
-        visibleOptions().forEach(opt => selected.delete(opt));
+        const vis = visibleOptions();
+        const allSelected = vis.length > 0 && vis.every(opt => selected.has(opt));
+        vis.forEach(opt => allSelected ? selected.delete(opt) : selected.add(opt));
         onChange(Array.from(selected));
         renderInner();
         const search = container.querySelector('.dropdown-search');
@@ -466,6 +484,7 @@ function renderFilters() {
     options: uniqueVals('Company type'),
     initialSelected: activeFilters['Company type'],
     searchable: false,
+    showSelectAll: true,
     onChange: (vals) => { activeFilters['Company type'] = vals; renderTable(); }
   });
   buildingTypeDropdown = createCheckboxDropdown({
@@ -474,6 +493,7 @@ function renderFilters() {
     options: uniqueVals('Building type'),
     initialSelected: activeFilters['Building type'],
     searchable: false,
+    showSelectAll: true,
     onChange: (vals) => { activeFilters['Building type'] = vals; renderTable(); }
   });
   cityDropdown = createCheckboxDropdown({
@@ -665,7 +685,8 @@ function openForm(id) {
     options: allCities,
     initialSelected: Array.from(selectedCities),
     searchable: true,
-    formatLabel: (c) => `${c} (${CITY_COUNTY[c]})`,
+    groupBy: (c) => CITY_COUNTY[c] || 'Other',
+    showSelectAll: true,
     onChange: () => {}
   });
   const fBuildingTypeDropdown = createCheckboxDropdown({
