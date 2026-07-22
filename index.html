@@ -4,13 +4,23 @@
 <meta charset="UTF-8">
 <title>WA Builders Directory</title>
 <style>
+  :root {
+    --accent-primary: #B5502E;
+    --accent-primary-hover: #9C4326;
+    --accent-secondary: #C97A2B;
+    --accent-danger: #A6341F;
+  }
   body { font-family: -apple-system, sans-serif; max-width: 1000px; margin: 24px auto; padding: 0 16px; color: #222; }
+  a { color: var(--accent-secondary); }
+  a:hover { color: var(--accent-primary); }
   .setup { background: #FFF8E1; border: 1px solid #E8D9A0; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 14px; }
   .setup input { width: 100%; margin: 4px 0 10px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
   .toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
   input[type=text] { flex: 1; min-width: 180px; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; }
   button { padding: 8px 14px; border: 1px solid #888; border-radius: 6px; background: #fff; cursor: pointer; }
-  button.primary { background: #1B4B5A; color: #fff; border-color: #1B4B5A; }
+  button:hover { border-color: var(--accent-secondary); color: var(--accent-secondary); }
+  button.primary { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+  button.primary:hover { background: var(--accent-primary-hover); border-color: var(--accent-primary-hover); color: #fff; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
   th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: left; }
   th { background: #fafafa; }
@@ -28,15 +38,15 @@
   .dropdown-search { margin: 8px 8px 0; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
   .dropdown-options { overflow-y: auto; max-height: 220px; padding: 6px 0; }
   .dropdown-option { display: flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
-  .dropdown-option:hover { background: #f5f5f5; }
+  .dropdown-option:hover { background: #FBF1EA; }
   .dropdown-empty { padding: 6px 12px; font-size: 13px; color: #888; }
   .dropdown-actions { display: flex; gap: 6px; padding: 8px 8px 0; }
   .dropdown-actions button { flex: 1; font-size: 12px; padding: 4px 6px; }
   .dropdown-group-label { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: #555; }
   .dropdown-group-toggle { cursor: pointer; color: #888; }
-  .dropdown-group-toggle:hover { color: #1B4B5A; }
+  .dropdown-group-toggle:hover { color: var(--accent-secondary); }
   .dropdown-group-name { display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1; }
-  .dropdown-group-name:hover { color: #1B4B5A; }
+  .dropdown-group-name:hover { color: var(--accent-secondary); }
   .dd-see-more { display: block; width: calc(100% - 16px); margin: 4px 8px 8px; font-size: 12px; padding: 4px 6px; }
   .expand-row td { background: #FAFAF8; padding: 14px 20px; }
   .badge { display: inline-block; background: #eee; border-radius: 20px; padding: 2px 8px; font-size: 12px; color: #555; }
@@ -53,7 +63,8 @@
   .note-item:last-child { border-bottom: none; }
   .note-text { white-space: pre-wrap; }
   .note-date { color: #888; font-size: 12px; white-space: nowrap; margin-left: 8px; }
-  .note-del { border: none; background: none; color: #B3261E; cursor: pointer; font-size: 13px; padding: 0 4px; }
+  .note-del { border: none; background: none; color: var(--accent-danger); cursor: pointer; font-size: 13px; padding: 0 4px; }
+  .note-del:hover { color: var(--accent-danger); }
   .note-add-row { display: flex; gap: 8px; margin-top: 6px; }
   .note-add-row textarea { flex: 1; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font: inherit; resize: vertical; min-height: 38px; }
 </style>
@@ -690,7 +701,7 @@ function openForm(id) {
         <button id="cancelForm">Cancel</button>
         <button class="primary" id="saveForm">Save</button>
       </div>
-      ${id ? `<div style="text-align:center; margin-top:14px;"><button id="deleteForm" style="border:none; background:none; color:#B3261E; font-size:13px; cursor:pointer; padding:4px;">Delete this builder</button></div>` : ''}
+      ${id ? `<div style="text-align:center; margin-top:14px;"><button id="deleteForm" style="border:none; background:none; color:var(--accent-danger); font-size:13px; cursor:pointer; padding:4px;">Delete this builder</button></div>` : ''}
     </div>`;
   document.body.appendChild(overlay);
 
