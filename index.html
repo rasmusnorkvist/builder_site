@@ -20,6 +20,7 @@
   .field { margin-bottom: 10px; }
   .field label { display: block; font-size: 12px; color: #666; margin-bottom: 3px; }
   .field input, .field textarea { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
+  .field .dropdown-toggle { width: 100%; box-sizing: border-box; }
   .filters { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
   .dropdown-box { position: relative; }
   .dropdown-toggle { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; min-width: 140px; text-align: left; font: inherit; }
@@ -33,13 +34,14 @@
   .dropdown-actions button { flex: 1; font-size: 12px; padding: 4px 6px; }
   .dropdown-group-label { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: #555; }
   .dropdown-group-toggle { cursor: pointer; color: #888; }
-  .dropdown-group-name { cursor: pointer; flex: 1; }
-  .dropdown-group-name:hover, .dropdown-group-toggle:hover { color: #1B4B5A; }
+  .dropdown-group-toggle:hover { color: #1B4B5A; }
+  .dropdown-group-name { display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1; }
+  .dropdown-group-name:hover { color: #1B4B5A; }
   .dd-see-more { display: block; width: calc(100% - 16px); margin: 4px 8px 8px; font-size: 12px; padding: 4px 6px; }
   .expand-row td { background: #FAFAF8; padding: 14px 20px; }
   .badge { display: inline-block; background: #eee; border-radius: 20px; padding: 2px 8px; font-size: 12px; color: #555; }
-  .chev, .chev-col { width: 24px; text-align: center; padding-left: 10px; padding-right: 4px; }
-  .chev { cursor: pointer; color: #888; }
+  .chev, .chev-col { width: 32px; text-align: center; padding-left: 10px; padding-right: 4px; }
+  .chev { cursor: pointer; color: #888; font-size: 26px; line-height: 1; }
   .setup { background: #FFF8E1; border: 1px solid #E8D9A0; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 14px; }
   .setup input { width: 100%; margin: 4px 0 10px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
   .offline-banner { background: #FDECEA; border: 1px solid #F3B4AE; color: #7A2E27; padding: 8px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; display: none; }
@@ -298,16 +300,16 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     return allNames.filter(g => defaultGroups.has(g));
   }
 
-  function visibleOptions() {
-    if (!groupBy) return options.filter(isVisible);
-    const groups = buildGroups();
-    const names = new Set(computeVisibleGroupNames(groups));
-    return options.filter(opt => names.has(groupBy(opt)) && isVisible(opt));
+  function allSelectableOptions() {
+    // "Select all" targets every option that matches the current search (or all options
+    // when there's no search) — deliberately ignoring the default/see-more group restriction,
+    // so it can reach cities in counties that aren't currently shown.
+    return options.filter(isVisible);
   }
 
   function allVisibleSelected() {
-    const vis = visibleOptions();
-    return vis.length > 0 && vis.every(opt => selected.has(opt));
+    const targets = allSelectableOptions();
+    return targets.length > 0 && targets.every(opt => selected.has(opt));
   }
 
   function optionRowHtml(opt) {
@@ -333,10 +335,14 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         const selectedCount = groupOptions.filter(c => selected.has(c)).length;
         const isExpanded = !!searchQuery || expandedGroups.has(g) || selectedCount > 0;
         const headerLabel = selectedCount ? `${g} (${selectedCount})` : g;
+        const allInGroupSelected = groupOptions.length > 0 && groupOptions.every(c => selected.has(c));
         return `<div class="dropdown-group">
           <div class="dropdown-group-label">
             <span class="dropdown-group-toggle" data-group="${esc(g)}">${isExpanded ? '▾' : '▸'}</span>
-            <span class="dropdown-group-name" data-group="${esc(g)}" title="Click to select/deselect all in ${esc(g)}">${esc(headerLabel)}</span>
+            <label class="dropdown-group-name">
+              <input type="checkbox" class="dropdown-group-checkbox" data-group="${esc(g)}" ${allInGroupSelected ? 'checked' : ''}>
+              ${esc(headerLabel)}
+            </label>
           </div>
           ${isExpanded ? groupOptions.map(optionRowHtml).join('') : ''}
         </div>`;
@@ -397,14 +403,13 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         renderInner();
       };
     });
-    container.querySelectorAll('.dropdown-group-name').forEach(el => {
-      el.onclick = (e) => {
-        e.stopPropagation();
-        const g = el.dataset.group;
+    container.querySelectorAll('.dropdown-group-checkbox').forEach(cb => {
+      cb.onclick = (e) => e.stopPropagation();
+      cb.onchange = () => {
+        const g = cb.dataset.group;
         const groups = buildGroups();
         const groupOptions = groups[g] || [];
-        const allSelected = groupOptions.length > 0 && groupOptions.every(c => selected.has(c));
-        groupOptions.forEach(c => allSelected ? selected.delete(c) : selected.add(c));
+        groupOptions.forEach(c => cb.checked ? selected.add(c) : selected.delete(c));
         onChange(Array.from(selected));
         renderInner();
       };
@@ -421,9 +426,10 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     if (toggleAllBtn) {
       toggleAllBtn.onclick = (e) => {
         e.stopPropagation();
-        const vis = visibleOptions();
-        const allSelected = vis.length > 0 && vis.every(opt => selected.has(opt));
-        vis.forEach(opt => allSelected ? selected.delete(opt) : selected.add(opt));
+        const targets = allSelectableOptions();
+        const allSelected = targets.length > 0 && targets.every(opt => selected.has(opt));
+        targets.forEach(opt => allSelected ? selected.delete(opt) : selected.add(opt));
+        if (groupBy && defaultGroups && defaultGroups.size) showAllGroups = !allSelected;
         onChange(Array.from(selected));
         renderInner();
         const search = container.querySelector('.dropdown-search');
@@ -433,7 +439,16 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     const search = container.querySelector('.dropdown-search');
     if (search) {
       search.value = searchQuery;
-      search.oninput = () => { searchQuery = search.value; renderInner(); };
+      search.oninput = () => {
+        searchQuery = search.value;
+        const cursorPos = search.selectionStart;
+        renderInner();
+        const newSearch = container.querySelector('.dropdown-search');
+        if (newSearch) {
+          newSearch.focus();
+          if (newSearch.setSelectionRange) newSearch.setSelectionRange(cursorPos, cursorPos);
+        }
+      };
     }
   }
 
