@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>WA Builders Directory</title>
+<title>Builders Directory</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -228,15 +228,15 @@
 
   .offline-banner { background: #FDECEA; border: 1px solid #F3B4AE; color: #7A2E27; padding: 10px 16px; border-radius: 3px; font-size: 13px; margin-bottom: 12px; display: none; }
   .demo-banner {
-    background: #FFF8E7;
-    border: 1px solid #F0DFA8;
-    color: #6B5410;
+    background: #FBE9E6;
+    border: 1px solid #E8B4AB;
+    color: var(--danger);
     padding: 12px 18px;
     border-radius: 3px;
     font-size: 13px;
     margin-bottom: 16px;
   }
-  .demo-banner strong { color: #4A3A08; }
+  .demo-banner strong { color: var(--danger); }
 
   .notes-box {
     background: var(--surface);
@@ -268,8 +268,8 @@
   <div class="brand">
     <div class="brand-mark">WA</div>
     <div>
-      <div class="brand-name">WA Builders Directory</div>
-      <div class="brand-sub">Washington State &middot; Builder Intelligence</div>
+      <div class="brand-name">Builders Directory</div>
+      <div class="brand-sub">Land Intelligence</div>
     </div>
   </div>
   <nav class="site-nav">
@@ -295,7 +295,7 @@
   <label>Notes table name</label>
   <input type="text" id="notesTableName" value="Notes">
   <label>Last edited field name (the Builders table field showing when a record was last modified)</label>
-  <input type="text" id="lastEditedFieldName" value="Last Modified">
+  <input type="text" id="lastEditedFieldName" value="Last Edited Date">
   <button class="primary" id="connectBtn">Connect</button>
 </div>
 
@@ -304,8 +304,8 @@
   <div class="offline-banner" id="offlineBanner"></div>
   <div class="toolbar">
     <input type="text" id="search" placeholder="Search builders...">
-    <button class="primary" id="addBtn">Add builder</button>
-    <button id="refreshBtn">Refresh</button>
+    <button class="primary" id="addBtn">Add company</button>
+    <button id="refreshBtn" title="Refresh" aria-label="Refresh">&#8635;</button>
     <button id="exportBtn">Export to Excel</button>
     <button id="connectToggleBtn">Connect to Airtable</button>
   </div>
@@ -340,7 +340,7 @@
 
 </div>
 
-<div class="map-sidebar" id="mapSidebar">
+<div class="map-sidebar" id="mapSidebar" style="display:none;">
   <div class="map-sidebar-header">
     <h3>Active cities</h3>
     <button class="map-toggle-btn" id="mapToggleBtn">Hide</button>
@@ -1190,7 +1190,7 @@ function openForm(id) {
   overlay.innerHTML = `
     <div class="modal" style="max-height:80vh; overflow-y:auto; position:relative;">
       <button id="closeForm" aria-label="Close" style="position:absolute; top:10px; right:10px; width:28px; height:28px; padding:0; border-radius:3px; font-size:16px; line-height:1;">×</button>
-      <h3>${id ? 'Edit builder' : 'Add builder'}</h3>
+      <h3>${id ? 'Edit company' : 'Add company'}</h3>
       <div class="field"><label>Company</label><input id="fCompany" value="${esc(f.Company)}"></div>
       <div class="field"><label>Company type</label><input id="fCompanyType" value="${esc(f['Company type'])}"></div>
       <div class="field"><label>Cities</label><div id="fCitiesDD"></div></div>
@@ -1202,7 +1202,7 @@ function openForm(id) {
         <button id="cancelForm">Cancel</button>
         <button class="primary" id="saveForm">Save</button>
       </div>
-      ${id ? `<div style="text-align:center; margin-top:14px;"><button id="deleteForm" style="border:none; background:none; color:var(--accent-danger); font-size:13px; cursor:pointer; padding:4px;">Delete this builder</button></div>` : ''}
+      ${id ? `<div style="text-align:center; margin-top:14px;"><button id="deleteForm" style="border:none; background:none; color:var(--danger); font-size:13px; cursor:pointer; padding:4px;">Delete this company</button></div>` : ''}
     </div>`;
   document.body.appendChild(overlay);
 
@@ -1287,7 +1287,7 @@ function openForm(id) {
 }
 
 async function deleteRecord(id) {
-  if (!confirm('Delete this builder?')) return;
+  if (!confirm('Delete this company?')) return;
   if (!navigator.onLine) {
     alert("You're offline. Changes can't be saved right now. Try again once you're back online.");
     return;
