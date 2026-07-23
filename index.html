@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Builders Directory</title>
+<title>Company Directory</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -268,7 +268,7 @@
   <div class="brand">
     <div class="brand-mark">WA</div>
     <div>
-      <div class="brand-name">Builders Directory</div>
+      <div class="brand-name">Company Directory</div>
       <div class="brand-sub">Land Intelligence</div>
     </div>
   </div>
@@ -279,8 +279,8 @@
   </nav>
 </header>
 <div class="page-wrap">
-<h1 class="page-title">Builder Directory</h1>
-<p class="page-subtitle">Search, filter, and manage builders across Washington state.</p>
+<h1 class="page-title">Company Directory</h1>
+<p class="page-subtitle">Search, filter, and manage companies across Washington state.</p>
 <div class="page-layout">
 <div class="main-content">
 
@@ -1131,7 +1131,7 @@ function exportToExcel() {
   // opens it natively when saved with a .xls extension, and it renders with bold headers and
   // no cell background color (plain black-on-white, just a thin grid for readability).
   const theadHtml = `<tr>${headers.map(h =>
-    `<th style="font-weight:bold; text-align:left; padding:4px 8px; border:1px solid #ccc; background:#fff;">${esc(h)}</th>`
+    `<th style="font-weight:bold; text-align:left; padding:4px 8px; border:1px solid #ccc;">${esc(h)}</th>`
   ).join('')}</tr>`;
   const tbodyHtml = lastFilteredRows.map(r => {
     const f = r.fields;
