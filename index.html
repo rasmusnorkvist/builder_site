@@ -488,13 +488,16 @@ function builderWebsite(f) {
 }
 
 function stockInfoUrl(value) {
-  const trimmed = (value || '').toString().trim();
+  let trimmed = (value || '').toString().trim();
   if (!trimmed) return '';
   // Airtable's Stock Info column usually holds just a ticker (e.g. "AAPL"), not a full URL —
   // using that raw value as an href silently linked to a relative, nonexistent local page
   // instead of navigating anywhere. Build a real Yahoo Finance URL from it; if the field
   // already contains a full URL (some records might), leave it untouched.
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // Strip exchange-prefixed notation like "NASDAQ: AAPL" or "NYSE:XYZ" down to just the ticker —
+  // Yahoo's quote URL only wants the symbol itself.
+  if (trimmed.includes(':')) trimmed = trimmed.split(':').pop().trim();
   return `https://finance.yahoo.com/quote/${encodeURIComponent(trimmed)}`;
 }
 
@@ -1103,7 +1106,7 @@ function renderTable() {
         f['Stock Info'] ? `<a href="${esc(stockInfoUrl(f['Stock Info']))}" target="_blank" onclick="event.stopPropagation()">Stock info</a>` : ''
       ].filter(Boolean).join(' &middot; ');
       const doc = docLinks ? `<div style="margin-top:8px;">${docLinks}</div>` : '';
-      const mainOffice = f['Main Office City'] ? `<div style="margin-bottom:10px;"><strong>Main office</strong> ${esc(f['Main Office City'])}</div>` : '';
+      const mainOffice = f['Main Office City'] ? `<div style="display:inline-block; margin-bottom:12px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Main office</strong> ${esc(f['Main Office City'])}</div>` : '';
       expandHtml = `<tr class="expand-row"><td colspan="7">
         ${mainOffice}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
