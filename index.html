@@ -487,6 +487,17 @@ function builderWebsite(f) {
   return f.Website || '';
 }
 
+function stockInfoUrl(value) {
+  const trimmed = (value || '').toString().trim();
+  if (!trimmed) return '';
+  // Airtable's Stock Info column usually holds just a ticker (e.g. "AAPL"), not a full URL —
+  // using that raw value as an href silently linked to a relative, nonexistent local page
+  // instead of navigating anywhere. Build a real Yahoo Finance URL from it; if the field
+  // already contains a full URL (some records might), leave it untouched.
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://finance.yahoo.com/quote/${encodeURIComponent(trimmed)}`;
+}
+
 function formatLastEdited(f) {
   if (!LAST_EDITED_FIELD) return '';
   const val = f[LAST_EDITED_FIELD];
@@ -1089,10 +1100,12 @@ function renderTable() {
       const contactHtml = contactBlocks || 'None';
       const docLinks = [
         f['Document link'] ? `<a href="${esc(f['Document link'])}" target="_blank" onclick="event.stopPropagation()">Open document</a>` : '',
-        f['Stock Info'] ? `<a href="${esc(f['Stock Info'])}" target="_blank" onclick="event.stopPropagation()">Stock info</a>` : ''
+        f['Stock Info'] ? `<a href="${esc(stockInfoUrl(f['Stock Info']))}" target="_blank" onclick="event.stopPropagation()">Stock info</a>` : ''
       ].filter(Boolean).join(' &middot; ');
       const doc = docLinks ? `<div style="margin-top:8px;">${docLinks}</div>` : '';
+      const mainOffice = f['Main Office City'] ? `<div style="margin-bottom:10px;"><strong>Main office</strong> ${esc(f['Main Office City'])}</div>` : '';
       expandHtml = `<tr class="expand-row"><td colspan="7">
+        ${mainOffice}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
           <div><strong>Cities (${cities.length})</strong><div style="margin-top:6px;">${cityHtml || 'None'}</div></div>
           <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml || 'None'}</div>${doc}</div>
