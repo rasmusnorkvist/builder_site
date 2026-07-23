@@ -863,7 +863,7 @@ function openForm(id) {
     const fields = {
       Company: overlay.querySelector('#fCompany').value.trim(),
       'Company type': overlay.querySelector('#fCompanyType').value.trim(),
-      'Building type': fBuildingTypeDropdown.getSelected(),
+      'Building type': fBuildingTypeDropdown.getSelected().join(', '),
       'Document link': overlay.querySelector('#fDoc').value.trim()
     };
     [1,2,3,4].forEach(n => {
@@ -873,7 +873,7 @@ function openForm(id) {
       fields[`Contact ${n} Phone`] = block ? block.querySelector(`#c${n}Phone`).value.trim() : '';
       fields[`Contact ${n} Email`] = block ? block.querySelector(`#c${n}Email`).value.trim() : '';
     });
-    fields.Cities = fCitiesDropdown.getSelected();
+    fields.Cities = fCitiesDropdown.getSelected().join(', ');
     if (!navigator.onLine) {
       alert("You're offline. Changes can't be saved right now. Try again once you're back online.");
       return;
