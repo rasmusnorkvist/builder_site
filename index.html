@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
+  html { scroll-behavior: smooth; }
   :root {
     --navy-900: #0A1F3D;
     --navy-800: #0F2A54;
@@ -270,8 +271,8 @@
   </div>
   <nav class="site-nav">
     <a href="#">Directory</a>
-    <a href="#">Map</a>
-    <a href="#">Notes</a>
+    <a href="#mapSidebar" id="navMapLink">Map</a>
+    <a href="#notesBox" id="navNotesLink">Notes</a>
   </nav>
 </header>
 <div class="page-wrap">
@@ -323,7 +324,7 @@
     <tbody id="tbody"></tbody>
   </table>
 
-  <div class="notes-box">
+  <div class="notes-box" id="notesBox">
     <h3>Notes: future improvements</h3>
     <div class="status" id="notesStatus"></div>
     <div class="notes-list" id="notesList"></div>
@@ -336,7 +337,7 @@
 
 </div>
 
-<div class="map-sidebar">
+<div class="map-sidebar" id="mapSidebar">
   <div class="map-sidebar-header">
     <h3>Active cities</h3>
     <button class="map-toggle-btn" id="mapToggleBtn">Hide</button>
@@ -360,16 +361,19 @@ document.getElementById('collapseAllBtn').onclick = () => {
 };
 
 document.getElementById('mapToggleBtn').onclick = () => {
-  const wrap = document.getElementById('cityMapWrap');
-  const btn = document.getElementById('mapToggleBtn');
-  const isHidden = wrap.style.display === 'none';
-  wrap.style.display = isHidden ? 'block' : 'none';
-  btn.textContent = isHidden ? 'Hide' : 'Show';
-  if (isHidden && cityMap) {
+  document.getElementById('mapSidebar').style.display = 'none';
+};
+
+document.getElementById('navMapLink').onclick = (e) => {
+  e.preventDefault();
+  const sidebar = document.getElementById('mapSidebar');
+  sidebar.style.display = '';
+  if (cityMap) {
     // The map was sized/rendered while hidden (display:none), so Leaflet needs an explicit
     // nudge to recheck its container size, then the clip path needs recomputing against it.
     setTimeout(() => { cityMap.invalidateSize(); updateWaClipPath(); }, 0);
   }
+  sidebar.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 let API_KEY = '', BASE_ID = '', TABLE = '', NOTES_TABLE = '', LAST_EDITED_FIELD = '';
