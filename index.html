@@ -644,13 +644,19 @@ function initMap() {
 function updateActiveCityMarkers() {
   if (!cityMarkersLayer) return;
   cityMarkersLayer.clearLayers();
-  const activeCities = new Set();
-  records.forEach(r => toCitiesArray(r.fields.Cities).forEach(c => activeCities.add(c)));
-  activeCities.forEach(c => {
+  // Reflects whatever is currently filtered/searched (lastFilteredRows), not the full dataset,
+  // so the map stays in sync with the Company type / Building type / City filters and search box.
+  const cityCounts = {};
+  lastFilteredRows.forEach(r => toCitiesArray(r.fields.Cities).forEach(c => {
+    cityCounts[c] = (cityCounts[c] || 0) + 1;
+  }));
+  Object.keys(cityCounts).forEach(c => {
     const coords = CITY_COORDS[c];
     if (!coords) return;
-    L.circleMarker(coords, { radius: 5, color: '#B5502E', fillColor: '#B5502E', fillOpacity: 0.9, weight: 1 })
-      .bindTooltip(c)
+    const count = cityCounts[c];
+    const radius = 2500 + Math.min(count, 10) * 700; // meters — grows with builder coverage, capped
+    L.circle(coords, { radius, color: '#B5502E', fillColor: '#B5502E', fillOpacity: 0.3, weight: 1.5 })
+      .bindTooltip(`${c} (${count} builder${count === 1 ? '' : 's'})`)
       .addTo(cityMarkersLayer);
   });
 }
@@ -658,7 +664,6 @@ function updateActiveCityMarkers() {
 function render() {
   renderFilters();
   renderTable();
-  updateActiveCityMarkers();
 }
 
 function renderTable() {
@@ -725,6 +730,7 @@ function renderTable() {
   });
   tbody.querySelectorAll('[data-edit]').forEach(b => b.onclick = (e) => { e.stopPropagation(); openForm(b.dataset.edit); });
   tbody.querySelectorAll('[data-del]').forEach(b => b.onclick = (e) => { e.stopPropagation(); deleteRecord(b.dataset.del); });
+  updateActiveCityMarkers();
 }
 
 function exportToExcel() {
