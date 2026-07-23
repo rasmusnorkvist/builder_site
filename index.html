@@ -181,7 +181,11 @@
   .status { font-size: 13px; color: var(--text-muted); margin: 8px 2px; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(10,31,61,0.55); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(2px); }
-  .modal { background: #fff; border-radius: 4px; padding: 28px; width: 460px; max-width: calc(100vw - 32px); box-shadow: var(--shadow-lg); }
+  .modal {
+    background: #fff; border-radius: 10px; width: 460px; max-width: calc(100vw - 32px);
+    box-shadow: var(--shadow-lg); position: relative; overflow: hidden;
+  }
+  .modal-scroll { max-height: 80vh; overflow-y: auto; padding: 28px; }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; font-weight: 500; }
   .field input, .field textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border-strong); border-radius: 3px; font: inherit; }
@@ -201,7 +205,7 @@
     position: absolute; top: 100%; left: 0; z-index: 20;
     display: flex; flex-direction: column;
     background: #fff; border: 1px solid var(--border);
-    border-radius: 3px; margin-top: 6px; width: 260px;
+    border-radius: 3px; margin-top: 6px; min-width: 260px;
     box-shadow: var(--shadow-lg);
   }
   .dropdown-search { margin: 10px 10px 0; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 3px; }
@@ -704,6 +708,49 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     }
   }
 
+  // Sizes and positions the open panel so it never gets cut off: matches the panel's width to
+  // the toggle (so it's never narrower/smaller-looking than the control it belongs to), and
+  // flips it above the toggle plus clamps the options list to whatever room actually exists
+  // when there isn't enough space below — otherwise a panel near the bottom of the viewport (or
+  // a short list with little room left under it) can render past the visible area with no way
+  // to scroll down to the rest of it.
+  function positionPanel() {
+    if (!isOpen) return;
+    const toggle = container.querySelector('.dropdown-toggle');
+    const panel = container.querySelector('.dropdown-panel');
+    const optionsEl = container.querySelector('.dropdown-options');
+    if (!toggle || !panel || !optionsEl) return;
+
+    const toggleRect = toggle.getBoundingClientRect();
+    panel.style.width = Math.max(260, toggleRect.width) + 'px';
+
+    // Reset to natural (CSS-default) sizing/position before measuring, so a clamp left over
+    // from a previous open doesn't feed back into this calculation.
+    optionsEl.style.maxHeight = '';
+    panel.style.top = '100%';
+    panel.style.bottom = 'auto';
+    panel.style.marginTop = '6px';
+    panel.style.marginBottom = '0';
+
+    const margin = 12;
+    const panelRect = panel.getBoundingClientRect();
+    const chromeHeight = panelRect.height - optionsEl.offsetHeight;
+    const spaceBelow = window.innerHeight - toggleRect.bottom - margin;
+    const spaceAbove = toggleRect.top - margin;
+    const naturalOptionsHeight = Math.min(240, optionsEl.scrollHeight);
+
+    const openUpward = (chromeHeight + naturalOptionsHeight > spaceBelow) && (spaceAbove > spaceBelow);
+    const available = (openUpward ? spaceAbove : spaceBelow) - chromeHeight;
+    optionsEl.style.maxHeight = Math.max(80, Math.min(240, available)) + 'px';
+
+    if (openUpward) {
+      panel.style.top = 'auto';
+      panel.style.bottom = '100%';
+      panel.style.marginTop = '0';
+      panel.style.marginBottom = '6px';
+    }
+  }
+
   // Full rebuild: used for everything except typing in the search box (open/close, checkbox
   // clicks, group toggles, select-all, see-more). Typing uses refreshOptionsOnly() instead so the
   // search <input> itself is never destroyed mid-keystroke — that was the actual cause of only
@@ -761,6 +808,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
         refreshOptionsOnly();
       };
     }
+    positionPanel();
   }
 
   // Lightweight update for search-as-you-type: only touches the options list, the see-more
@@ -782,6 +830,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     }
     const toggleAllBtn = container.querySelector('.dd-toggle-all');
     if (toggleAllBtn) toggleAllBtn.textContent = allVisibleSelected() ? 'Deselect all' : 'Select all';
+    positionPanel();
   }
 
   container.classList.add('dropdown-box');
@@ -1202,6 +1251,7 @@ function openForm(id) {
 
   const allCities = Object.keys(CITY_COUNTY).sort();
   const selectedCities = new Set(toCitiesArray(f['Current Cities']));
+  const selectedPastCities = new Set(toCitiesArray(f['Past Cities']));
   const standardBuildingTypes = ['Townhome', 'Single-family', 'Apartments'];
   const existingBuildingTypes = uniqueVals('Building Types');
   const allBuildingTypes = Array.from(new Set([...standardBuildingTypes, ...existingBuildingTypes])).sort();
@@ -1222,14 +1272,20 @@ function openForm(id) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="modal" style="max-height:80vh; overflow-y:auto; position:relative;">
-      <button id="closeForm" aria-label="Close" style="position:absolute; top:10px; right:10px; width:28px; height:28px; padding:0; border-radius:3px; font-size:16px; line-height:1;">×</button>
+    <div class="modal">
+      <button id="closeForm" aria-label="Close" style="position:absolute; top:10px; right:10px; width:28px; height:28px; padding:0; border-radius:3px; font-size:16px; line-height:1; z-index:1;">×</button>
+      <div class="modal-scroll">
       <h3>${id ? 'Edit company' : 'Add company'}</h3>
       <div class="field"><label>Company</label><input id="fCompany" value="${esc(f.Company)}"></div>
       <div class="field"><label>Company Type</label><input id="fCompanyType" value="${esc(f['Company Type'])}"></div>
+      <div class="field"><label>Website</label><input id="fWebsite" value="${esc(f.Website)}"></div>
       <div class="field"><label>Cities</label><div id="fCitiesDD"></div></div>
+      <div class="field"><label>Past Cities</label><div id="fPastCitiesDD"></div></div>
       <div class="field"><label>Building Types</label><div id="fBuildingTypeDD"></div></div>
+      <div class="field"><label>Main Office City</label><input id="fMainOffice" value="${esc(f['Main Office City'])}"></div>
+      <div class="field"><label>Stock Info</label><input id="fStockInfo" value="${esc(f['Stock Info'])}"></div>
       <div class="field"><label>Document link</label><input id="fDoc" value="${esc(f['Document link'])}"></div>
+      <div class="field"><label>Notes</label><textarea id="fNotes" rows="3">${esc(f['Notes'])}</textarea></div>
       <div id="contactsContainer">${activeContacts.map(contactBlockHtml).join('')}</div>
       <button type="button" id="addContactBtn" style="margin-top:8px;">+ Add contact</button>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
@@ -1237,6 +1293,7 @@ function openForm(id) {
         <button class="primary" id="saveForm">Save</button>
       </div>
       ${id ? `<div style="text-align:center; margin-top:14px;"><button id="deleteForm" style="border:none; background:none; color:var(--danger); font-size:13px; cursor:pointer; padding:4px;">Delete this company</button></div>` : ''}
+      </div>
     </div>`;
   document.body.appendChild(overlay);
 
@@ -1245,6 +1302,16 @@ function openForm(id) {
     label: 'Cities',
     options: allCities,
     initialSelected: Array.from(selectedCities),
+    searchable: true,
+    groupBy: (c) => CITY_COUNTY[c] || 'Other',
+    showSelectAll: true,
+    onChange: () => {}
+  });
+  const fPastCitiesDropdown = createCheckboxDropdown({
+    container: overlay.querySelector('#fPastCitiesDD'),
+    label: 'Past Cities',
+    options: allCities,
+    initialSelected: Array.from(selectedPastCities),
     searchable: true,
     groupBy: (c) => CITY_COUNTY[c] || 'Other',
     showSelectAll: true,
@@ -1259,7 +1326,7 @@ function openForm(id) {
     onChange: () => {}
   });
   function forgetFormDropdowns() {
-    [fCitiesDropdown, fBuildingTypeDropdown].forEach(forgetDropdown);
+    [fCitiesDropdown, fPastCitiesDropdown, fBuildingTypeDropdown].forEach(forgetDropdown);
   }
 
   function refreshAddButtonVisibility() {
@@ -1290,8 +1357,12 @@ function openForm(id) {
     const fields = {
       Company: overlay.querySelector('#fCompany').value.trim(),
       'Company Type': overlay.querySelector('#fCompanyType').value.trim(),
+      Website: overlay.querySelector('#fWebsite').value.trim(),
       'Building Types': fBuildingTypeDropdown.getSelected().join(', '),
-      'Document link': overlay.querySelector('#fDoc').value.trim()
+      'Main Office City': overlay.querySelector('#fMainOffice').value.trim(),
+      'Stock Info': overlay.querySelector('#fStockInfo').value.trim(),
+      'Document link': overlay.querySelector('#fDoc').value.trim(),
+      Notes: overlay.querySelector('#fNotes').value.trim()
     };
     [1,2,3,4].forEach(n => {
       const block = overlay.querySelector(`.contact-block[data-slot="${n}"]`);
@@ -1301,6 +1372,7 @@ function openForm(id) {
       fields[`Contact ${n} Email`] = block ? block.querySelector(`#c${n}Email`).value.trim() : '';
     });
     fields['Current Cities'] = fCitiesDropdown.getSelected().join(', ');
+    fields['Past Cities'] = fPastCitiesDropdown.getSelected().join(', ');
     if (!navigator.onLine) {
       alert("You're offline. Changes can't be saved right now. Try again once you're back online.");
       return;
