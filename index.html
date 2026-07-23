@@ -441,7 +441,7 @@ setStatus(`${records.length} builders loaded (AI-generated demo data: connect to
   const savedLastEditedField = localStorage.getItem('wa_builders_last_edited_field');
   if (savedKey && savedBase) {
     API_KEY = savedKey; BASE_ID = savedBase; TABLE = savedTable || 'Builders'; NOTES_TABLE = savedNotesTable || 'Notes';
-    LAST_EDITED_FIELD = savedLastEditedField || '';
+    LAST_EDITED_FIELD = savedLastEditedField || 'Last Edited Date';
     document.getElementById('demoBanner').style.display = 'none';
     loadRecords();
     loadNotes();
@@ -1087,7 +1087,11 @@ function renderTable() {
         </div>`;
       }).join('');
       const contactHtml = contactBlocks || 'None';
-      const doc = f['Document link'] ? `<div style="margin-top:8px;"><a href="${f['Document link']}" target="_blank">Open document</a></div>` : '';
+      const docLinks = [
+        f['Document link'] ? `<a href="${esc(f['Document link'])}" target="_blank" onclick="event.stopPropagation()">Open document</a>` : '',
+        f['Stock Info'] ? `<a href="${esc(f['Stock Info'])}" target="_blank" onclick="event.stopPropagation()">Stock info</a>` : ''
+      ].filter(Boolean).join(' &middot; ');
+      const doc = docLinks ? `<div style="margin-top:8px;">${docLinks}</div>` : '';
       expandHtml = `<tr class="expand-row"><td colspan="7">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
           <div><strong>Cities (${cities.length})</strong><div style="margin-top:6px;">${cityHtml || 'None'}</div></div>
