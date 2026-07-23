@@ -1171,13 +1171,23 @@ function renderTable() {
         </div>`;
       }).join('');
       const contactHtml = contactBlocks || missingTag();
+      // Stock Info has no line at all when absent — not every company is publicly traded, so an
+      // empty ticker isn't a gap worth flagging the way a missing document link is.
+      const stockLine = f['Stock Info']
+        ? `<div>Stock info: <a href="${esc(stockInfoUrl(f['Stock Info']))}" target="_blank" onclick="event.stopPropagation()">Stock info</a></div>`
+        : '';
       const doc = `<div style="margin-top:8px; font-size:13px;">
         <div>Document: ${f['Document link'] ? `<a href="${esc(f['Document link'])}" target="_blank" onclick="event.stopPropagation()">Open document</a>` : missingTag()}</div>
-        <div>Stock info: ${f['Stock Info'] ? `<a href="${esc(stockInfoUrl(f['Stock Info']))}" target="_blank" onclick="event.stopPropagation()">Stock info</a>` : missingTag()}</div>
+        ${stockLine}
       </div>`;
       const mainOffice = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Main office</strong> ${f['Main Office City'] ? esc(f['Main Office City']) : missingTag()}</div>`;
       const localDecisionMaker = `<div style="display:inline-block; margin-bottom:12px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local decision maker</strong> ${f['Local Decision Maker'] ? esc(f['Local Decision Maker']) : missingTag()}</div>`;
-      const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;"><strong>Notes</strong><div style="margin-top:6px; white-space:pre-wrap; font-size:13px; color:var(--text-secondary,#444);">${f['Notes'] ? esc(f['Notes']) : missingTag()}</div></div>`;
+      // Unlike the other flagged fields, no notes yet isn't a data gap — just an invitation to
+      // add one via Edit, so it gets a neutral placeholder instead of the amber "Missing" tag.
+      const notesBody = f['Notes']
+        ? esc(f['Notes'])
+        : `<span style="color:var(--text-secondary,#888); font-style:italic;">No notes yet</span>`;
+      const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;"><strong>Notes</strong><div style="margin-top:6px; white-space:pre-wrap; font-size:13px; color:var(--text-secondary,#444);">${notesBody}</div></div>`;
       expandHtml = `<tr class="expand-row"><td colspan="7">
         ${mainOffice}${localDecisionMaker}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
@@ -1191,7 +1201,7 @@ function renderTable() {
     const website = builderWebsite(f);
     const companyCell = website
       ? `<a href="${esc(website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(f.Company)}</a>`
-      : `${esc(f.Company)} <span style="color:#9A6400; font-style:italic; font-size:12px;">(no website)</span>`;
+      : `<span style="color:var(--accent);">${esc(f.Company)}</span> <span style="color:#9A6400; font-style:italic; font-size:12px;">(no website)</span>`;
     const companyTypeCell = toCitiesArray(f['Company Type']).length ? esc(toCitiesArray(f['Company Type']).join(', ')) : missingTag();
     const buildingTypesCell = toCitiesArray(f['Building Types']).length ? esc(toCitiesArray(f['Building Types']).join(', ')) : missingTag();
     const previewCell = cities.length ? esc(preview) : missingTag();
@@ -1263,15 +1273,15 @@ function missingTag() {
 // Same set of fields missingTag() flags in the detail view, checked in one place so the list-row
 // dot and the expanded detail never disagree about whether a company has a gap.
 function hasMissingData(f) {
+  // Stock Info and Notes are excluded: not every company is publicly traded, and a company with
+  // no notes yet isn't a data gap — both are optional extras, not something to chase down.
   return !toCitiesArray(f['Company Type']).length
     || !toCitiesArray(f['Building Types']).length
     || !toCitiesArray(f['Current Cities']).length
     || !builderWebsite(f)
     || !f['Main Office City']
     || !f['Local Decision Maker']
-    || !f['Notes']
     || !f['Document link']
-    || !f['Stock Info']
     || ![1,2,3,4].some(n => f[`Contact ${n} Name`]);
 }
 
