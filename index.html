@@ -223,6 +223,8 @@
   .dd-see-more { display: block; width: calc(100% - 20px); margin: 4px 10px 10px; font-size: 12px; padding: 5px 8px; }
 
   .expand-row td { background: #FAF9F4; padding: 20px 24px; }
+  .missing-dot-cell { text-align: right; }
+  .missing-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #E0A800; }
   .badge {
     display: inline-block; background: #EEF2F8; color: var(--navy-700);
     border-radius: 4px; padding: 3px 10px; font-size: 12px; font-weight: 500;
@@ -1200,7 +1202,7 @@ function renderTable() {
       <td>${previewCell}</td>
       <td>${buildingTypesCell}</td>
       <td style="white-space:nowrap;">${esc(formatLastEdited(f))}</td>
-      <td></td>
+      <td class="missing-dot-cell">${hasMissingData(f) ? `<span class="missing-dot" title="Some data is missing for this company"></span>` : ''}</td>
     </tr>${expandHtml}`;
   }).join('');
   tbody.querySelectorAll('[data-toggle]').forEach(tr => {
@@ -1256,6 +1258,21 @@ function esc(s) { return (s||'').toString().replace(/[&<>"']/g, m => ({'&':'&amp
 // in a company's data are obvious at a glance instead of blending into the surrounding layout.
 function missingTag() {
   return `<span style="color:#9A6400; font-style:italic; font-weight:400;">Missing</span>`;
+}
+
+// Same set of fields missingTag() flags in the detail view, checked in one place so the list-row
+// dot and the expanded detail never disagree about whether a company has a gap.
+function hasMissingData(f) {
+  return !toCitiesArray(f['Company Type']).length
+    || !toCitiesArray(f['Building Types']).length
+    || !toCitiesArray(f['Current Cities']).length
+    || !builderWebsite(f)
+    || !f['Main Office City']
+    || !f['Local Decision Maker']
+    || !f['Notes']
+    || !f['Document link']
+    || !f['Stock Info']
+    || ![1,2,3,4].some(n => f[`Contact ${n} Name`]);
 }
 
 function setStatus(msg) { document.getElementById('status').textContent = msg; }
