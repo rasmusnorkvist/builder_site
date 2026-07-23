@@ -493,12 +493,19 @@ function toCitiesArray(val) {
 // one lowercase string, so search matches any imported Airtable column, including ones added to
 // the base later that this app doesn't otherwise display or know the name of.
 function recordSearchBlob(f) {
-  return Object.values(f).map(v => {
+  const fieldsBlob = Object.values(f).map(v => {
     if (Array.isArray(v)) return v.join(' ');
     if (v == null) return '';
     if (typeof v === 'object') return Object.values(v).join(' ');
     return String(v);
-  }).join(' ').toLowerCase();
+  }).join(' ');
+  // Also search on each city's county via the built-in CITY_COUNTY lookup, so a county name
+  // matches a company through its cities even when the explicit County field isn't set for it.
+  const derivedCounties = [...toCitiesArray(f['Current Cities']), ...toCitiesArray(f['Past Cities'])]
+    .map(c => CITY_COUNTY[c])
+    .filter(Boolean)
+    .join(' ');
+  return `${fieldsBlob} ${derivedCounties}`.toLowerCase();
 }
 
 function builderWebsite(f) {
