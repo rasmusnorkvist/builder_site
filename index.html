@@ -202,7 +202,7 @@ let companyTypeDropdown, buildingTypeDropdown, cityDropdown;
 let cityMap, cityMarkersLayer;
 let cityBoundaryCache = {};
 try {
-  const savedBoundaries = localStorage.getItem('wa_city_boundary_cache');
+  const savedBoundaries = localStorage.getItem('wa_city_boundary_cache_v2');
   if (savedBoundaries) cityBoundaryCache = JSON.parse(savedBoundaries);
 } catch (e) { cityBoundaryCache = {}; }
 let cityCircleLayers = {};
@@ -647,7 +647,46 @@ function initMap() {
     maxZoom: 16
   }).addTo(cityMap);
   cityMarkersLayer = L.layerGroup().addTo(cityMap);
+  loadStateMask();
   updateActiveCityMarkers();
+}
+
+// Covers everywhere outside Washington with a flat gray fill (no satellite texture at all),
+// leaving the grayscale satellite imagery visible only within the state — built as one polygon
+// with a giant outer ring and WA's real boundary as a hole, so it renders regardless of zoom/pan.
+function geojsonOuterRingsLatLng(geojson) {
+  const toLatLng = ring => ring.map(([lng, lat]) => [lat, lng]);
+  if (geojson.type === 'Polygon') return [toLatLng(geojson.coordinates[0])];
+  if (geojson.type === 'MultiPolygon') return geojson.coordinates.map(poly => toLatLng(poly[0]));
+  return [];
+}
+
+function drawStateMask(geojson) {
+  const holes = geojsonOuterRingsLatLng(geojson);
+  if (!holes.length || !cityMap) return;
+  const outerRing = [[85, -200], [85, 200], [-85, 200], [-85, -200]];
+  const mask = L.polygon([outerRing, ...holes], { stroke: false, fillColor: '#999', fillOpacity: 1, interactive: false }).addTo(cityMap);
+  mask.bringToBack();
+}
+
+async function loadStateMask() {
+  let geojson = null;
+  try {
+    const cached = localStorage.getItem('wa_state_boundary_cache_v1');
+    if (cached) geojson = JSON.parse(cached);
+  } catch (e) { geojson = null; }
+  if (!geojson) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?state=Washington&country=USA&format=json&polygon_geojson=1&limit=1`;
+      const res = await fetch(url);
+      const data = await res.json();
+      geojson = data && data[0] && data[0].geojson;
+      if (geojson) {
+        try { localStorage.setItem('wa_state_boundary_cache_v1', JSON.stringify(geojson)); } catch (e) {}
+      }
+    } catch (e) { geojson = null; }
+  }
+  if (geojson) drawStateMask(geojson);
 }
 
 // Real city-limit polygons come from OpenStreetMap's free Nominatim boundary lookup, fetched
@@ -703,7 +742,10 @@ async function runBoundaryFetchQueue() {
   while (boundaryFetchQueue.length) {
     const city = boundaryFetchQueue.shift();
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', Washington, USA')}&format=json&polygon_geojson=1&limit=1`;
+      // Structured query (city=/state=/country=) instead of a freeform q= string — freeform search
+      // ranks "X County" above the city "X" itself for towns that share their county's name
+      // (e.g. Snohomish, Spokane), so plain-text search returns the wrong (county) boundary.
+      const url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(city)}&state=Washington&country=USA&format=json&polygon_geojson=1&limit=1`;
       const res = await fetch(url);
       const data = await res.json();
       const geojson = data && data[0] && data[0].geojson;
@@ -712,7 +754,7 @@ async function runBoundaryFetchQueue() {
       cityBoundaryCache[city] = null;
     }
     boundaryFetchPending.delete(city);
-    try { localStorage.setItem('wa_city_boundary_cache', JSON.stringify(cityBoundaryCache)); } catch (e) {}
+    try { localStorage.setItem('wa_city_boundary_cache_v2', JSON.stringify(cityBoundaryCache)); } catch (e) {}
     applyBoundaryIfStillActive(city);
     if (boundaryFetchQueue.length) await new Promise(r => setTimeout(r, 1100));
   }
@@ -726,9 +768,11 @@ function updateActiveCityMarkers() {
   // Reflects whatever is currently filtered/searched (lastFilteredRows), not the full dataset,
   // so the map stays in sync with the Company type / Building type / City filters and search box.
   const cityCounts = cityActiveCounts();
+  const activeCoords = [];
   Object.keys(cityCounts).forEach(c => {
     const coords = CITY_COORDS[c];
     if (!coords) return;
+    activeCoords.push(coords);
     const count = cityCounts[c];
     const cachedBoundary = cityBoundaryCache[c];
     if (cachedBoundary) {
@@ -738,6 +782,13 @@ function updateActiveCityMarkers() {
       queueBoundaryFetch(c);
     }
   });
+  if (cityMap) {
+    if (activeCoords.length) {
+      cityMap.fitBounds(activeCoords, { padding: [20, 20], maxZoom: 11 });
+    } else {
+      cityMap.setView([47.4, -120.7], 7);
+    }
+  }
 }
 
 function render() {
