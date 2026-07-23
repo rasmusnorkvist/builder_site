@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>WA Builders Directory</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
     --accent-primary: #B5502E;
@@ -10,7 +12,18 @@
     --accent-secondary: #C97A2B;
     --accent-danger: #A6341F;
   }
-  body { font-family: -apple-system, sans-serif; max-width: 1000px; margin: 24px auto; padding: 0 16px; color: #222; }
+  body { font-family: -apple-system, sans-serif; max-width: 1360px; margin: 24px auto; padding: 0 16px; color: #222; }
+  .page-layout { display: flex; gap: 24px; align-items: flex-start; }
+  .main-content { flex: 1; min-width: 0; }
+  .map-sidebar { width: 320px; flex-shrink: 0; position: sticky; top: 24px; }
+  .map-sidebar h3 { font-size: 14px; margin: 0 0 8px; }
+  #cityMap { height: 560px; border-radius: 8px; border: 1px solid #ccc; background: #eee; }
+  #cityMap .leaflet-tile-pane { filter: grayscale(1) contrast(1.05); }
+  .map-note { font-size: 12px; color: #888; margin-top: 6px; }
+  @media (max-width: 900px) {
+    .page-layout { flex-direction: column; }
+    .map-sidebar { width: 100%; position: static; }
+  }
   a { color: var(--accent-secondary); }
   a:hover { color: var(--accent-primary); }
   .setup { background: #FFF8E1; border: 1px solid #E8D9A0; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 14px; }
@@ -73,6 +86,9 @@
 </head>
 <body>
 
+<div class="page-layout">
+<div class="main-content">
+
 <h2>Builder Matrix</h2>
 
 <div class="setup" id="setupBox" style="display:none;">
@@ -129,6 +145,15 @@
   </div>
 </div>
 
+</div>
+
+<div class="map-sidebar">
+  <h3>Active cities</h3>
+  <div id="cityMap"></div>
+  <div class="map-note">Grayscale satellite map — colored dots mark cities with an active builder.</div>
+</div>
+</div>
+
 <script>
 document.getElementById('connectToggleBtn').onclick = () => {
   const box = document.getElementById('setupBox');
@@ -168,12 +193,15 @@ document.getElementById('connectBtn').onclick = async () => {
 };
 
 const CITY_COUNTY = {"Aberdeen": "Grays Harbor", "Airway Heights": "Spokane", "Albion": "Whitman", "Algona": "King", "Almira": "Lincoln", "Anacortes": "Skagit", "Arlington": "Snohomish", "Asotin": "Asotin", "Auburn": "King", "Bainbridge Island": "Kitsap", "Barstow": "Ferry", "Battle Ground": "Clark", "Bellevue": "King", "Bellingham": "Whatcom", "Benton City": "Benton", "Bingen": "Klickitat", "Black Diamond": "King", "Blaine": "Whatcom", "Bonney Lake": "Pierce", "Bothell": "King", "Bremerton": "Kitsap", "Brewster": "Okanogan", "Bridgeport": "Douglas", "Brier": "Snohomish", "Buckley": "Pierce", "Bucoda": "Thurston", "Burien": "King", "Burlington": "Skagit", "Camano Island": "Island", "Camas": "Clark", "Carbonado": "Pierce", "Carnation": "King", "Cashmere": "Chelan", "Castle Rock": "Cowlitz", "Cathlamet": "Wahkiakum", "Centralia": "Lewis", "Chehalis": "Lewis", "Chelan": "Chelan", "Cheney": "Spokane", "Chewelah": "Stevens", "Clarkston": "Asotin", "Cle Elum": "Kittitas", "Clyde Hill": "King", "Colfax": "Whitman", "College Place": "Walla Walla", "Colton": "Whitman", "Colville": "Stevens", "Concrete": "Skagit", "Connell": "Franklin", "Cosmopolis": "Grays Harbor", "Coulee City": "Grant", "Coulee Dam": "Okanogan", "Coupeville": "Island", "Cusick": "Pend Oreille", "Darrington": "Snohomish", "Davenport": "Lincoln", "Dayton": "Columbia", "Deer Park": "Spokane", "Deming": "Whatcom", "Des Moines": "King", "DuPont": "Pierce", "Duvall": "King", "East Wenatchee": "Douglas", "Eatonville": "Pierce", "Edgewood": "Pierce", "Edmonds": "Snohomish", "Electric City": "Grant", "Ellensburg": "Kittitas", "Elma": "Grays Harbor", "Elmer City": "Okanogan", "Enumclaw": "King", "Ephrata": "Grant", "Everett": "Snohomish", "Everson": "Whatcom", "Federal Way": "King", "Ferndale": "Whatcom", "Fife": "Pierce", "Fircrest": "Pierce", "Forks": "Clallam", "Friday Harbor": "San Juan", "Garfield": "Whitman", "George": "Grant", "Gig Harbor": "Pierce", "Gold Bar": "Snohomish", "Goldendale": "Klickitat", "Grand Coulee": "Grant", "Grandview": "Yakima", "Granger": "Yakima", "Granite Falls": "Snohomish", "Harrah": "Yakima", "Harrington": "Lincoln", "Hoquiam": "Grays Harbor", "Ilwaco": "Pacific", "Index": "Snohomish", "Ione": "Pend Oreille", "Issaquah": "King", "Kahlotus": "Franklin", "Kalama": "Cowlitz", "Kelso": "Cowlitz", "Kennewick": "Benton", "Kent": "King", "Kettle Falls": "Stevens", "Kingston": "Kitsap", "Kirkland": "King", "Kittitas": "Kittitas", "La Push": "Clallam", "Lacey": "Thurston", "La Conner": "Skagit", "Lake Forest Park": "King", "Lake Stevens": "Snohomish", "Lakewood": "Pierce", "Langley": "Island", "Leavenworth": "Chelan", "Long Beach": "Pacific", "Longview": "Cowlitz", "Lynden": "Whatcom", "Lynnwood": "Snohomish", "Mabton": "Yakima", "Maple Valley": "King", "Marysville": "Snohomish", "Mattawa": "Grant", "McCleary": "Grays Harbor", "Medical Lake": "Spokane", "Medina": "King", "Mercer Island": "King", "Metaline": "Pend Oreille", "Metaline Falls": "Pend Oreille", "Mill Creek": "Snohomish", "Milton": "Pierce", "Monroe": "Snohomish", "Montesano": "Grays Harbor", "Morton": "Lewis", "Moses Lake": "Grant", "Mossyrock": "Lewis", "Mount Vernon": "Skagit", "Mountlake Terrace": "Snohomish", "Moxee City": "Yakima", "Mukilteo": "Snohomish", "Napavine": "Lewis", "Neah Bay": "Clallam", "Nespelem": "Okanogan", "Newcastle": "King", "Newport": "Pend Oreille", "Nooksack": "Whatcom", "Normandy Park": "King", "North Bend": "King", "North Bonneville": "Skamania", "Northport": "Stevens", "Oak Harbor": "Island", "Oaksdale": "Whitman", "Oakville": "Grays Harbor", "Ocean Shores": "Grays Harbor", "Odessa": "Lincoln", "Okanogan": "Okanogan", "Olympia": "Thurston", "Omak": "Okanogan", "Oroville": "Okanogan", "Orting": "Pierce", "Othello": "Adams", "Pacific": "King", "Palouse": "Whitman", "Pasco": "Franklin", "Pateros": "Okanogan", "Pe Ell": "Lewis", "Pomeroy": "Garfield", "Port Angeles": "Clallam", "Port Orchard": "Kitsap", "Port Townsend": "Jefferson", "Poulsbo": "Kitsap", "Prescott": "Walla Walla", "Prosser": "Benton", "Pullman": "Whitman", "Puyallup": "Pierce", "Quincy": "Grant", "Rainier": "Thurston", "Raymond": "Pacific", "Reardan": "Lincoln", "Redmond": "King", "Renton": "King", "Republic": "Ferry", "Richland": "Benton", "Ridgefield": "Clark", "Ritzville": "Adams", "Riverside": "Okanogan", "Rock Island": "Douglas", "Rockwood": "Douglas", "Rollingbay": "Kitsap", "Rosalia": "Whitman", "Roslyn": "Kittitas", "Roy": "Pierce", "Royal City": "Grant", "Ruston": "Pierce", "SeaTac": "King", "Seattle": "King", "Sedro Woolley": "Skagit", "Selah": "Yakima", "Sequim": "Clallam", "Shelton": "Mason", "Shoreline": "King", "Silverdale": "Kitsap", "Skykomish": "King", "Snohomish": "Snohomish", "Snoqualmie": "King", "Soap Lake": "Grant", "South Bend": "Pacific", "South Prairie": "Pierce", "Spokane": "Spokane", "Sprague": "Lincoln", "Springdale": "Stevens", "Stanwood": "Snohomish", "Steilacoom": "Pierce", "Stevenson": "Skamania", "Sultan": "Snohomish", "Sumas": "Whatcom", "Sumner": "Pierce", "Sunnyside": "Yakima", "Suquamish": "Kitsap", "Tacoma": "Pierce", "Taholah": "Grays Harbor", "Tekoa": "Whitman", "Tenino": "Thurston", "Tokeland": "Pacific", "Toledo": "Lewis", "Tonasket": "Okanogan", "Toppenish": "Yakima", "Tukwila": "King", "Tulalip": "Snohomish", "Tumwater": "Thurston", "Twisp": "Okanogan", "Union Gap": "Yakima", "Uniontown": "Whitman", "Usk": "Pend Oreille", "Vader": "Lewis", "Vancouver": "Clark", "Vashon Island": "King", "Waitsburg": "Walla Walla", "Walla Walla": "Walla Walla", "Wapato": "Yakima", "Warden": "Grant", "Washougal": "Clark", "Waterville": "Douglas", "Wellpinit": "Stevens", "Wenatchee": "Chelan", "West Richland": "Benton", "Westport": "Grays Harbor", "White Salmon": "Klickitat", "Wilbur": "Lincoln", "Wilkeson": "Pierce", "Winlock": "Lewis", "Winthrop": "Okanogan", "Woodinville": "King", "Woodland": "Cowlitz", "Woodway": "Snohomish", "Yacolt": "Clark", "Yakima": "Yakima", "Yarrow Point": "King", "Yelm": "Thurston", "Zillah": "Yakima", "Spokane Valley": "Spokane", "Sammamish": "King", "Kenmore": "King", "Covington": "King", "University Place": "Pierce", "Liberty Lake": "Spokane", "Millwood": "Spokane"};
+const CITY_COORDS = {"Aberdeen": [46.9754, -123.8157], "Airway Heights": [47.6479, -117.5936], "Albion": [46.7943, -117.2432], "Algona": [47.2751, -122.2551], "Almira": [47.7204, -118.9273], "Anacortes": [48.5126, -122.6127], "Arlington": [48.1937, -122.1262], "Asotin": [46.3401, -117.0446], "Auburn": [47.3073, -122.2285], "Bainbridge Island": [47.6262, -122.522], "Barstow": [48.684, -117.957], "Battle Ground": [45.7809, -122.5379], "Bellevue": [47.6101, -122.2015], "Bellingham": [48.7519, -122.4787], "Benton City": [46.2643, -119.4906], "Bingen": [45.7176, -121.4696], "Black Diamond": [47.3095, -122.0026], "Blaine": [48.9926, -122.7456], "Bonney Lake": [47.1784, -122.1815], "Bothell": [47.7623, -122.2054], "Bremerton": [47.5673, -122.6329], "Brewster": [48.0993, -119.7809], "Bridgeport": [48.0068, -119.6832], "Brier": [47.7909, -122.2751], "Buckley": [47.1626, -122.0287], "Bucoda": [46.7887, -122.7826], "Burien": [47.4705, -122.3467], "Burlington": [48.4762, -122.3273], "Camano Island": [48.1793, -122.474], "Camas": [45.5871, -122.4001], "Carbonado": [47.0679, -122.0526], "Carnation": [47.6465, -121.9165], "Cashmere": [47.5215, -120.4693], "Castle Rock": [46.2751, -122.9068], "Cathlamet": [46.2032, -123.3834], "Centralia": [46.7162, -122.9543], "Chehalis": [46.6621, -122.9682], "Chelan": [47.8399, -120.0163], "Cheney": [47.4874, -117.5758], "Chewelah": [48.2793, -117.7185], "Clarkston": [46.4165, -117.0454], "Cle Elum": [47.1962, -120.9378], "Clyde Hill": [47.6293, -122.2187], "Colfax": [47.1148, -117.3626], "College Place": [46.0396, -118.3877], "Colton": [46.5793, -117.129], "Colville": [48.5462, -117.9012], "Concrete": [48.5379, -121.7512], "Connell": [46.6626, -118.8593], "Cosmopolis": [46.9626, -123.7743], "Coulee City": [47.6084, -119.2895], "Coulee Dam": [47.9873, -118.9779], "Coupeville": [48.2213, -122.6857], "Cusick": [48.3324, -117.2937], "Darrington": [48.2532, -121.6032], "Davenport": [47.6554, -118.1487], "Dayton": [46.321, -117.9793], "Deer Park": [47.9515, -117.4762], "Deming": [48.8368, -122.2137], "Des Moines": [47.4004, -122.3151], "DuPont": [47.1004, -122.6421], "Duvall": [47.7434, -121.9857], "East Wenatchee": [47.4165, -120.2887], "Eatonville": [46.8646, -122.2668], "Edgewood": [47.2529, -122.2704], "Edmonds": [47.8107, -122.3774], "Electric City": [47.9276, -119.0687], "Ellensburg": [46.9965, -120.5478], "Elma": [47.0018, -123.4137], "Elmer City": [48.0207, -118.9482], "Enumclaw": [47.2043, -121.9915], "Ephrata": [47.3173, -119.5527], "Everett": [47.979, -122.2021], "Everson": [48.9204, -122.3401], "Federal Way": [47.3223, -122.3126], "Ferndale": [48.846, -122.5915], "Fife": [47.2401, -122.3593], "Fircrest": [47.2323, -122.5165], "Forks": [47.9506, -124.3854], "Friday Harbor": [48.5354, -123.0165], "Garfield": [47.0271, -117.1479], "George": [47.0906, -119.8557], "Gig Harbor": [47.3273, -122.5843], "Gold Bar": [47.8551, -121.6968], "Goldendale": [45.821, -120.8215], "Grand Coulee": [47.9432, -119.0018], "Grandview": [46.2543, -119.904], "Granger": [46.3407, -120.1868], "Granite Falls": [48.0854, -121.9668], "Harrah": [46.3924, -120.5701], "Harrington": [47.474, -118.2529], "Hoquiam": [46.9815, -123.8893], "Ilwaco": [46.3054, -124.0329], "Index": [47.8218, -121.5551], "Ione": [48.7379, -117.4109], "Issaquah": [47.5301, -122.0326], "Kahlotus": [46.6432, -118.5569], "Kalama": [45.9926, -122.8515], "Kelso": [46.1468, -122.9082], "Kennewick": [46.2112, -119.1372], "Kent": [47.3809, -122.2348], "Kettle Falls": [48.6104, -118.0576], "Kingston": [47.7982, -122.4998], "Kirkland": [47.6769, -122.206], "Kittitas": [46.9846, -120.4204], "La Push": [47.9081, -124.6352], "Lacey": [47.0343, -122.8232], "La Conner": [48.3929, -122.4993], "Lake Forest Park": [47.7554, -122.2829], "Lake Stevens": [48.0154, -122.0665], "Lakewood": [47.1718, -122.5185], "Langley": [48.0365, -122.4054], "Leavenworth": [47.5962, -120.6615], "Long Beach": [46.3529, -124.0562], "Longview": [46.1382, -122.9382], "Lynden": [48.9468, -122.4515], "Lynnwood": [47.8209, -122.3151], "Mabton": [46.2129, -119.9962], "Maple Valley": [47.3954, -122.0398], "Marysville": [48.0518, -122.1771], "Mattawa": [46.7379, -119.9028], "McCleary": [47.0501, -123.2665], "Medical Lake": [47.5679, -117.6837], "Medina": [47.6212, -122.2287], "Mercer Island": [47.5707, -122.2221], "Metaline": [48.8657, -117.3768], "Metaline Falls": [48.8606, -117.3736], "Mill Creek": [47.8601, -122.2043], "Milton": [47.2451, -122.314], "Monroe": [47.8557, -121.9715], "Montesano": [46.9776, -123.6015], "Morton": [46.5546, -122.2779], "Moses Lake": [47.1301, -119.2781], "Mossyrock": [46.549, -122.4779], "Mount Vernon": [48.4212, -122.334], "Mountlake Terrace": [47.7901, -122.3037], "Moxee City": [46.5701, -120.2273], "Mukilteo": [47.9446, -122.2971], "Napavine": [46.5779, -122.9057], "Neah Bay": [48.3668, -124.6165], "Nespelem": [48.1657, -118.9776], "Newcastle": [47.5479, -122.1615], "Newport": [48.1826, -117.0451], "Nooksack": [48.9218, -122.3223], "Normandy Park": [47.4304, -122.3521], "North Bend": [47.4954, -121.7871], "North Bonneville": [45.644, -121.9843], "Northport": [48.9218, -117.7854], "Oak Harbor": [48.2935, -122.644], "Oaksdale": [47.1329, -117.244], "Oakville": [46.8437, -123.2454], "Ocean Shores": [46.9762, -124.1554], "Odessa": [47.3312, -118.6879], "Okanogan": [48.3604, -119.5807], "Olympia": [47.0379, -122.9007], "Omak": [48.4118, -119.5266], "Oroville": [48.9412, -119.4362], "Orting": [47.0965, -122.2043], "Othello": [46.829, -119.1701], "Pacific": [47.2626, -122.2568], "Palouse": [46.9137, -117.0687], "Pasco": [46.2396, -119.1006], "Pateros": [48.0479, -119.9037], "Pe Ell": [46.5701, -123.2965], "Pomeroy": [46.4715, -117.5993], "Port Angeles": [48.1181, -123.4307], "Port Orchard": [47.5401, -122.6365], "Port Townsend": [48.1173, -122.7604], "Poulsbo": [47.7368, -122.6468], "Prescott": [46.2985, -118.3018], "Prosser": [46.2059, -119.7687], "Pullman": [46.7298, -117.1817], "Puyallup": [47.1854, -122.2929], "Quincy": [47.2343, -119.8526], "Rainier": [46.8879, -122.6879], "Raymond": [46.6826, -123.7326], "Reardan": [47.6668, -117.8646], "Redmond": [47.674, -122.1215], "Renton": [47.4829, -122.2171], "Republic": [48.6482, -118.7357], "Richland": [46.2857, -119.2845], "Ridgefield": [45.8157, -122.7443], "Ritzville": [47.129, -118.3801], "Riverside": [48.5121, -119.5301], "Rock Island": [47.3607, -120.1487], "Rockwood": [46.94, -117.6801], "Rollingbay": [47.6857, -122.4907], "Rosalia": [47.2385, -117.3651], "Roslyn": [47.2276, -120.9993], "Roy": [47.0007, -122.5354], "Royal City": [46.8845, -119.6373], "Ruston": [47.2965, -122.509], "SeaTac": [47.4498, -122.2871], "Seattle": [47.6062, -122.3321], "Sedro Woolley": [48.5037, -122.2371], "Selah": [46.6546, -120.5301], "Sequim": [48.0851, -123.1065], "Shelton": [47.2154, -123.1007], "Shoreline": [47.7557, -122.341], "Silverdale": [47.644, -122.6968], "Skykomish": [47.7104, -121.3557], "Snohomish": [47.9126, -122.0982], "Snoqualmie": [47.5232, -121.8271], "Soap Lake": [47.3862, -119.4871], "South Bend": [46.6656, -123.8054], "South Prairie": [47.1421, -122.0937], "Spokane": [47.6588, -117.426], "Sprague": [47.304, -117.9718], "Springdale": [47.9714, -117.7565], "Stanwood": [48.2429, -122.3757], "Steilacoom": [47.1687, -122.594], "Stevenson": [45.6979, -121.8843], "Sultan": [47.8593, -121.8107], "Sumas": [49.0001, -122.2726], "Sumner": [47.2043, -122.2401], "Sunnyside": [46.3237, -120.006], "Suquamish": [47.7343, -122.5551], "Tacoma": [47.2529, -122.4443], "Taholah": [47.339, -124.283], "Tekoa": [47.229, -117.0693], "Tenino": [46.8593, -122.8479], "Tokeland": [46.7168, -124.169], "Toledo": [46.4407, -122.8482], "Tonasket": [48.7048, -119.4362], "Toppenish": [46.3777, -120.309], "Tukwila": [47.474, -122.261], "Tulalip": [48.0654, -122.2865], "Tumwater": [47.0154, -122.9101], "Twisp": [48.3646, -120.1207], "Union Gap": [46.559, -120.479], "Uniontown": [46.5393, -117.0861], "Usk": [48.3007, -117.2696], "Vader": [46.138, -122.949], "Vancouver": [45.6387, -122.6615], "Vashon Island": [47.4457, -122.461], "Waitsburg": [46.2707, -118.1554], "Walla Walla": [46.0646, -118.343], "Wapato": [46.4479, -120.4207], "Warden": [46.973, -119.049], "Washougal": [45.5826, -122.3532], "Waterville": [47.6501, -120.0682], "Wellpinit": [47.933, -117.999], "Wenatchee": [47.4235, -120.3103], "West Richland": [46.3098, -119.3587], "Westport": [46.8896, -124.1054], "White Salmon": [45.7267, -121.4893], "Wilbur": [47.7573, -118.7059], "Wilkeson": [47.0993, -122.0349], "Winlock": [46.4993, -122.9407], "Winthrop": [48.4737, -120.1893], "Woodinville": [47.7576, -122.1637], "Woodland": [45.9046, -122.7454], "Woodway": [47.7893, -122.3857], "Yacolt": [45.8757, -122.409], "Yakima": [46.6021, -120.5059], "Yarrow Point": [47.6462, -122.2173], "Yelm": [46.9412, -122.6046], "Zillah": [46.4046, -120.2593], "Spokane Valley": [47.6733, -117.2394], "Sammamish": [47.6163, -122.0356], "Kenmore": [47.7557, -122.244], "Covington": [47.3595, -122.1171], "University Place": [47.2154, -122.5493], "Liberty Lake": [47.6737, -117.113], "Millwood": [47.6821, -117.2907]};
 let expandedIds = new Set();
 let activeFilters = { 'Company type': [], 'Building type': [], City: [] };
 let lastFilteredRows = [];
 const activeDropdowns = [];
 let companyTypeDropdown, buildingTypeDropdown, cityDropdown;
+let cityMap, cityMarkersLayer;
 
+initMap();
 render();
 renderNotes();
 setStatus(`${records.length} builders loaded (AI-generated demo data: connect to Airtable to use your real base).`);
@@ -602,9 +630,35 @@ function groupByCounty(cities) {
   return Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
 }
 
+function initMap() {
+  if (typeof L === 'undefined') return; // Leaflet CDN failed to load (offline/blocked) — skip gracefully
+  cityMap = L.map('cityMap', { scrollWheelZoom: false }).setView([47.4, -120.7], 7);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri',
+    maxZoom: 16
+  }).addTo(cityMap);
+  cityMarkersLayer = L.layerGroup().addTo(cityMap);
+  updateActiveCityMarkers();
+}
+
+function updateActiveCityMarkers() {
+  if (!cityMarkersLayer) return;
+  cityMarkersLayer.clearLayers();
+  const activeCities = new Set();
+  records.forEach(r => toCitiesArray(r.fields.Cities).forEach(c => activeCities.add(c)));
+  activeCities.forEach(c => {
+    const coords = CITY_COORDS[c];
+    if (!coords) return;
+    L.circleMarker(coords, { radius: 5, color: '#B5502E', fillColor: '#B5502E', fillOpacity: 0.9, weight: 1 })
+      .bindTooltip(c)
+      .addTo(cityMarkersLayer);
+  });
+}
+
 function render() {
   renderFilters();
   renderTable();
+  updateActiveCityMarkers();
 }
 
 function renderTable() {
