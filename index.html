@@ -301,7 +301,7 @@
   <label>Notes table name</label>
   <input type="text" id="notesTableName" value="Notes">
   <label>Last edited field name (the Builders table field showing when a record was last modified)</label>
-  <input type="text" id="lastEditedFieldName" value="Last Edited Date">
+  <input type="text" id="lastEditedFieldName" value="Last Modified">
   <button class="primary" id="connectBtn">Connect</button>
 </div>
 
@@ -445,7 +445,7 @@ setStatus(`${records.length} builders loaded (AI-generated demo data: connect to
   const savedLastEditedField = localStorage.getItem('wa_builders_last_edited_field');
   if (savedKey && savedBase) {
     API_KEY = savedKey; BASE_ID = savedBase; TABLE = savedTable || 'Builders'; NOTES_TABLE = savedNotesTable || 'Notes';
-    LAST_EDITED_FIELD = savedLastEditedField || 'Last Edited Date';
+    LAST_EDITED_FIELD = savedLastEditedField || 'Last Modified';
     document.getElementById('demoBanner').style.display = 'none';
     loadRecords();
     loadNotes();
