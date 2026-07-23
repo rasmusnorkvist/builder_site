@@ -72,7 +72,7 @@
   .map-toggle-btn { font-size: 11px; padding: 3px 8px; }
   #cityMap { height: 300px; border: none; background: transparent; overflow: hidden; }
   #cityMap .leaflet-grayscale-pane { filter: grayscale(1) contrast(1.05); }
-  .city-map-label { background: rgba(255,255,255,0.85); border-radius: 3px; padding: 1px 4px; font-size: 10px; font-weight: 600; color: #222; border: none; box-shadow: none; white-space: nowrap; }
+  .city-map-label { background: none; border: none; box-shadow: none; padding: 0; font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9); white-space: nowrap; pointer-events: none; }
   .city-map-label::before { display: none; }
   .map-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
 
@@ -414,6 +414,7 @@ let lastFilteredRows = [];
 const activeDropdowns = [];
 let companyTypeDropdown, buildingTypeDropdown, cityDropdown;
 let cityMap, cityMarkersLayer;
+const CITY_LABEL_MIN_ZOOM = 8;
 let waBoundaryRingsLatLng = [];
 let cityBoundaryCache = {};
 try {
@@ -481,9 +482,7 @@ function toCitiesArray(val) {
 }
 
 function builderWebsite(f) {
-  if (f.Website) return f.Website;
-  const slug = (f.Company || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return `https://example.com/${slug}`;
+  return f.Website || '';
 }
 
 function formatLastEdited(f) {
@@ -869,6 +868,7 @@ function initMap() {
   L.tileLayer(esriUrl, { attribution: '', maxZoom: 16, pane: 'grayscale' }).addTo(cityMap);
   cityMarkersLayer = L.layerGroup().addTo(cityMap);
   cityMap.on('move zoom', updateWaClipPath);
+  cityMap.on('zoomend', updateCityLabelVisibility);
   loadStateBoundary();
   updateActiveCityMarkers();
 }
@@ -895,7 +895,10 @@ function updateWaClipPath() {
     if (!pts.length) return '';
     return `M${pts.map(p => `${p.x},${p.y}`).join(' L')} Z`;
   }).filter(Boolean).join(' ');
-  grayscalePane.style.clipPath = waRings ? `path('evenodd', '${outerRing} ${waRings}')` : '';
+  // Note: the fill-rule keyword (evenodd) must be a bare keyword, not a quoted string — quoting
+  // it makes the whole clip-path value invalid, which silently no-ops (no clipping at all) and
+  // makes the grayscale layer cover the entire map, Washington included.
+  grayscalePane.style.clipPath = waRings ? `path(evenodd, '${outerRing} ${waRings}')` : '';
 }
 
 async function loadStateBoundary() {
@@ -944,14 +947,26 @@ function cityLabelOptions() {
 function drawCircleLayer(city, coords, count) {
   const radius = 2500 + Math.min(count, 10) * 700; // meters — grows with builder coverage, capped
   cityCircleLayers[city] = L.circle(coords, { radius, color: '#B5502E', fillColor: '#B5502E', fillOpacity: 0.3, weight: 1.5 })
-    .bindTooltip(`${city} (${count} builder${count === 1 ? '' : 's'})`, cityLabelOptions())
+    .bindTooltip(city, cityLabelOptions())
     .addTo(cityMarkersLayer);
 }
 
 function drawBoundaryLayer(city, geojson, count) {
   cityCircleLayers[city] = L.geoJSON(geojson, { style: boundaryStyle() })
-    .bindTooltip(`${city} (${count} builder${count === 1 ? '' : 's'})`, cityLabelOptions())
+    .bindTooltip(city, cityLabelOptions())
     .addTo(cityMarkersLayer);
+}
+
+// Declutters at statewide zoom levels and reveals labels as you zoom in, the way place names
+// on Google Maps only appear once you're zoomed in close enough to read them individually.
+function updateCityLabelVisibility() {
+  if (!cityMap) return;
+  const show = cityMap.getZoom() >= CITY_LABEL_MIN_ZOOM;
+  Object.values(cityCircleLayers).forEach(layer => {
+    if (!layer) return;
+    if (show) { if (layer.openTooltip) layer.openTooltip(); }
+    else if (layer.closeTooltip) layer.closeTooltip();
+  });
 }
 
 function applyBoundaryIfStillActive(city) {
@@ -1025,6 +1040,7 @@ function updateActiveCityMarkers() {
       cityMap.setView([47.4, -120.7], 7);
     }
   }
+  updateCityLabelVisibility();
 }
 
 function render() {
@@ -1078,9 +1094,13 @@ function renderTable() {
         <div style="margin-top:10px;"><button data-edit="${r.id}">Edit</button></div>
       </td></tr>`;
     }
+    const website = builderWebsite(f);
+    const companyCell = website
+      ? `<a href="${esc(website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(f.Company)}</a>`
+      : `${esc(f.Company)} <span style="color:var(--text-secondary,#888); font-size:12px;">(no website)</span>`;
     return `<tr style="cursor:pointer;" data-toggle="${r.id}">
       <td class="chev">${isOpen ? '▾' : '▸'}</td>
-      <td><a href="${builderWebsite(f)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(f.Company)}</a></td>
+      <td>${companyCell}</td>
       <td>${esc(f['Company type'])}</td>
       <td>${esc(preview)}</td>
       <td>${esc(toCitiesArray(f['Building type']).join(', '))}</td>
@@ -1107,21 +1127,26 @@ function exportToExcel() {
     'Contact 2 Name','Contact 2 Role','Contact 2 Phone','Contact 2 Email',
     'Contact 3 Name','Contact 3 Role','Contact 3 Phone','Contact 3 Email',
     'Contact 4 Name','Contact 4 Role','Contact 4 Phone','Contact 4 Email'];
-  const csvRows = [headers.join(',')];
-  lastFilteredRows.forEach(r => {
+  // A real CSV can't carry any formatting at all, so this builds an HTML table instead — Excel
+  // opens it natively when saved with a .xls extension, and it renders with bold headers and
+  // no cell background color (plain black-on-white, just a thin grid for readability).
+  const theadHtml = `<tr>${headers.map(h =>
+    `<th style="font-weight:bold; text-align:left; padding:4px 8px; border:1px solid #ccc; background:#fff;">${esc(h)}</th>`
+  ).join('')}</tr>`;
+  const tbodyHtml = lastFilteredRows.map(r => {
     const f = r.fields;
-    const row = headers.map(h => {
-      let v = (h === 'Cities' || h === 'Building type') ? toCitiesArray(f[h]).join('; ') : (f[h] || '');
-      v = String(v).replace(/"/g, '""');
-      return `"${v}"`;
+    const cells = headers.map(h => {
+      const v = (h === 'Cities' || h === 'Building type') ? toCitiesArray(f[h]).join('; ') : (f[h] || '');
+      return `<td style="padding:4px 8px; border:1px solid #ccc;">${esc(v)}</td>`;
     });
-    csvRows.push(row.join(','));
-  });
-  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    return `<tr>${cells.join('')}</tr>`;
+  }).join('');
+  const html = `<html><head><meta charset="UTF-8"></head><body><table style="border-collapse:collapse;">${theadHtml}${tbodyHtml}</table></body></html>`;
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'wa-builders-export.csv';
+  a.download = 'wa-builders-export.xls';
   a.click();
   URL.revokeObjectURL(url);
 }
