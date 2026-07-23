@@ -65,10 +65,11 @@
 
   .page-layout { display: flex; gap: 32px; align-items: flex-start; }
   .main-content { flex: 1; min-width: 0; }
-  .map-sidebar { width: 340px; flex-shrink: 0; position: sticky; top: 96px; }
-  .map-sidebar h3 { font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; }
-  #cityMap { height: 560px; border-radius: 4px; border: 1px solid var(--border); background: #eee; box-shadow: var(--shadow-md); overflow: hidden; }
-  #cityMap .leaflet-tile-pane { filter: grayscale(1) contrast(1.05); }
+  .map-sidebar { width: 260px; flex-shrink: 0; position: sticky; top: 96px; }
+  .map-sidebar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .map-sidebar h3 { font-size: 13px; margin: 0; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; }
+  .map-toggle-btn { font-size: 11px; padding: 3px 8px; }
+  #cityMap { height: 300px; border: none; background: transparent; overflow: hidden; }
   .map-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
 
   @media (max-width: 900px) {
@@ -336,9 +337,14 @@
 </div>
 
 <div class="map-sidebar">
-  <h3>Active cities</h3>
-  <div id="cityMap"></div>
-  <div class="map-note">Grayscale satellite map — colored dots mark cities with an active builder.</div>
+  <div class="map-sidebar-header">
+    <h3>Active cities</h3>
+    <button class="map-toggle-btn" id="mapToggleBtn">Hide</button>
+  </div>
+  <div id="cityMapWrap">
+    <div id="cityMap"></div>
+    <div class="map-note">Satellite map, shaped to Washington state — colored areas mark cities with an active builder.</div>
+  </div>
 </div>
 </div>
 </div>
@@ -351,6 +357,19 @@ document.getElementById('connectToggleBtn').onclick = () => {
 document.getElementById('collapseAllBtn').onclick = () => {
   expandedIds.clear();
   renderTable();
+};
+
+document.getElementById('mapToggleBtn').onclick = () => {
+  const wrap = document.getElementById('cityMapWrap');
+  const btn = document.getElementById('mapToggleBtn');
+  const isHidden = wrap.style.display === 'none';
+  wrap.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? 'Hide' : 'Show';
+  if (isHidden && cityMap) {
+    // The map was sized/rendered while hidden (display:none), so Leaflet needs an explicit
+    // nudge to recheck its container size, then the clip path needs recomputing against it.
+    setTimeout(() => { cityMap.invalidateSize(); updateWaClipPath(); }, 0);
+  }
 };
 
 let API_KEY = '', BASE_ID = '', TABLE = '', NOTES_TABLE = '', LAST_EDITED_FIELD = '';
@@ -388,6 +407,7 @@ let lastFilteredRows = [];
 const activeDropdowns = [];
 let companyTypeDropdown, buildingTypeDropdown, cityDropdown;
 let cityMap, cityMarkersLayer;
+let waBoundaryRingsLatLng = [];
 let cityBoundaryCache = {};
 try {
   const savedBoundaries = localStorage.getItem('wa_city_boundary_cache_v2');
@@ -835,13 +855,15 @@ function initMap() {
     maxZoom: 16
   }).addTo(cityMap);
   cityMarkersLayer = L.layerGroup().addTo(cityMap);
-  loadStateMask();
+  cityMap.on('move zoom', updateWaClipPath);
+  loadStateBoundary();
   updateActiveCityMarkers();
 }
 
-// Covers everywhere outside Washington with a flat gray fill (no satellite texture at all),
-// leaving the grayscale satellite imagery visible only within the state — built as one polygon
-// with a giant outer ring and WA's real boundary as a hole, so it renders regardless of zoom/pan.
+// Real, full-color satellite imagery, clipped to Washington's actual outline — nothing outside
+// the state renders at all. The clip-path is recomputed on every pan/zoom (via the map's own
+// latLngToContainerPoint) so it stays perfectly aligned with the live view instead of being a
+// fixed shape that only matched one particular zoom level.
 function geojsonOuterRingsLatLng(geojson) {
   const toLatLng = ring => ring.map(([lng, lat]) => [lat, lng]);
   if (geojson.type === 'Polygon') return [toLatLng(geojson.coordinates[0])];
@@ -849,15 +871,19 @@ function geojsonOuterRingsLatLng(geojson) {
   return [];
 }
 
-function drawStateMask(geojson) {
-  const holes = geojsonOuterRingsLatLng(geojson);
-  if (!holes.length || !cityMap) return;
-  const outerRing = [[85, -200], [85, 200], [-85, 200], [-85, -200]];
-  const mask = L.polygon([outerRing, ...holes], { stroke: false, fillColor: '#999', fillOpacity: 1, interactive: false }).addTo(cityMap);
-  mask.bringToBack();
+function updateWaClipPath() {
+  if (!cityMap || !waBoundaryRingsLatLng.length) return;
+  const mapPane = document.querySelector('#cityMap .leaflet-map-pane');
+  if (!mapPane) return;
+  const pathData = waBoundaryRingsLatLng.map(ring => {
+    const pts = ring.map(latlng => cityMap.latLngToContainerPoint(latlng));
+    if (!pts.length) return '';
+    return `M${pts.map(p => `${p.x},${p.y}`).join(' L')} Z`;
+  }).filter(Boolean).join(' ');
+  mapPane.style.clipPath = pathData ? `path('${pathData}')` : '';
 }
 
-async function loadStateMask() {
+async function loadStateBoundary() {
   let geojson = null;
   try {
     const cached = localStorage.getItem('wa_state_boundary_cache_v1');
@@ -874,7 +900,14 @@ async function loadStateMask() {
       }
     } catch (e) { geojson = null; }
   }
-  if (geojson) drawStateMask(geojson);
+  if (!geojson || !cityMap) return;
+  waBoundaryRingsLatLng = geojsonOuterRingsLatLng(geojson);
+  if (!waBoundaryRingsLatLng.length) return;
+  // Only constrains how far you can pan/zoom out — doesn't force a particular view, so it
+  // doesn't fight with updateActiveCityMarkers()'s fitBounds-to-active-cities behavior.
+  const bounds = L.latLngBounds(waBoundaryRingsLatLng.flat());
+  cityMap.setMaxBounds(bounds.pad(0.15));
+  updateWaClipPath();
 }
 
 // Real city-limit polygons come from OpenStreetMap's free Nominatim boundary lookup, fetched
