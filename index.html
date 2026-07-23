@@ -71,6 +71,9 @@
   .map-sidebar h3 { font-size: 13px; margin: 0; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; }
   .map-toggle-btn { font-size: 11px; padding: 3px 8px; }
   #cityMap { height: 300px; border: none; background: transparent; overflow: hidden; }
+  #cityMap .leaflet-grayscale-pane { filter: grayscale(1) contrast(1.05); }
+  .city-map-label { background: rgba(255,255,255,0.85); border-radius: 3px; padding: 1px 4px; font-size: 10px; font-weight: 600; color: #222; border: none; box-shadow: none; white-space: nowrap; }
+  .city-map-label::before { display: none; }
   .map-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
 
   @media (max-width: 900px) {
@@ -344,7 +347,7 @@
   </div>
   <div id="cityMapWrap">
     <div id="cityMap"></div>
-    <div class="map-note">Satellite map, shaped to Washington state — colored areas mark cities with an active builder.</div>
+    <div class="map-note">Full-color satellite within Washington, grayscale beyond it. Labeled areas mark cities with an active builder.</div>
   </div>
 </div>
 </div>
@@ -854,20 +857,25 @@ function groupByCounty(cities) {
 function initMap() {
   if (typeof L === 'undefined') return; // Leaflet CDN failed to load (offline/blocked) — skip gracefully
   cityMap = L.map('cityMap', { scrollWheelZoom: false }).setView([47.4, -120.7], 7);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles &copy; Esri',
-    maxZoom: 16
-  }).addTo(cityMap);
+  const esriUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  // Base layer: full-color satellite everywhere.
+  L.tileLayer(esriUrl, { attribution: 'Tiles &copy; Esri', maxZoom: 16 }).addTo(cityMap);
+  // A second copy of the same imagery, grayscale-filtered (via CSS on its own pane) and
+  // clipped to a "donut" shape (everywhere MINUS Washington), sits on top of the color layer.
+  // Net effect: Washington shows the color layer through the hole; everywhere else shows this
+  // grayscale layer instead of being hidden — so surrounding states are visible but desaturated.
+  cityMap.createPane('grayscale');
+  cityMap.getPane('grayscale').style.zIndex = 350;
+  L.tileLayer(esriUrl, { attribution: '', maxZoom: 16, pane: 'grayscale' }).addTo(cityMap);
   cityMarkersLayer = L.layerGroup().addTo(cityMap);
   cityMap.on('move zoom', updateWaClipPath);
   loadStateBoundary();
   updateActiveCityMarkers();
 }
 
-// Real, full-color satellite imagery, clipped to Washington's actual outline — nothing outside
-// the state renders at all. The clip-path is recomputed on every pan/zoom (via the map's own
-// latLngToContainerPoint) so it stays perfectly aligned with the live view instead of being a
-// fixed shape that only matched one particular zoom level.
+// The grayscale layer's clip-path is recomputed on every pan/zoom (via the map's own
+// latLngToContainerPoint) so the color/grayscale split stays aligned with Washington's real
+// outline at the live view, instead of being a fixed shape that only matched one zoom level.
 function geojsonOuterRingsLatLng(geojson) {
   const toLatLng = ring => ring.map(([lng, lat]) => [lat, lng]);
   if (geojson.type === 'Polygon') return [toLatLng(geojson.coordinates[0])];
@@ -877,14 +885,17 @@ function geojsonOuterRingsLatLng(geojson) {
 
 function updateWaClipPath() {
   if (!cityMap || !waBoundaryRingsLatLng.length) return;
-  const mapPane = document.querySelector('#cityMap .leaflet-map-pane');
-  if (!mapPane) return;
-  const pathData = waBoundaryRingsLatLng.map(ring => {
+  const grayscalePane = cityMap.getPane('grayscale');
+  if (!grayscalePane) return;
+  const container = cityMap.getContainer();
+  const w = container.clientWidth || 2000, h = container.clientHeight || 2000;
+  const outerRing = `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
+  const waRings = waBoundaryRingsLatLng.map(ring => {
     const pts = ring.map(latlng => cityMap.latLngToContainerPoint(latlng));
     if (!pts.length) return '';
     return `M${pts.map(p => `${p.x},${p.y}`).join(' L')} Z`;
   }).filter(Boolean).join(' ');
-  mapPane.style.clipPath = pathData ? `path('${pathData}')` : '';
+  grayscalePane.style.clipPath = waRings ? `path('evenodd', '${outerRing} ${waRings}')` : '';
 }
 
 async function loadStateBoundary() {
@@ -907,10 +918,6 @@ async function loadStateBoundary() {
   if (!geojson || !cityMap) return;
   waBoundaryRingsLatLng = geojsonOuterRingsLatLng(geojson);
   if (!waBoundaryRingsLatLng.length) return;
-  // Only constrains how far you can pan/zoom out — doesn't force a particular view, so it
-  // doesn't fight with updateActiveCityMarkers()'s fitBounds-to-active-cities behavior.
-  const bounds = L.latLngBounds(waBoundaryRingsLatLng.flat());
-  cityMap.setMaxBounds(bounds.pad(0.15));
   updateWaClipPath();
 }
 
@@ -930,16 +937,20 @@ function cityActiveCounts() {
   return counts;
 }
 
+function cityLabelOptions() {
+  return { permanent: true, direction: 'center', className: 'city-map-label' };
+}
+
 function drawCircleLayer(city, coords, count) {
   const radius = 2500 + Math.min(count, 10) * 700; // meters — grows with builder coverage, capped
   cityCircleLayers[city] = L.circle(coords, { radius, color: '#B5502E', fillColor: '#B5502E', fillOpacity: 0.3, weight: 1.5 })
-    .bindTooltip(`${city} (${count} builder${count === 1 ? '' : 's'})`)
+    .bindTooltip(`${city} (${count} builder${count === 1 ? '' : 's'})`, cityLabelOptions())
     .addTo(cityMarkersLayer);
 }
 
 function drawBoundaryLayer(city, geojson, count) {
   cityCircleLayers[city] = L.geoJSON(geojson, { style: boundaryStyle() })
-    .bindTooltip(`${city} (${count} builder${count === 1 ? '' : 's'})`)
+    .bindTooltip(`${city} (${count} builder${count === 1 ? '' : 's'})`, cityLabelOptions())
     .addTo(cityMarkersLayer);
 }
 
@@ -1045,17 +1056,19 @@ function renderTable() {
     if (isOpen) {
       const cityHtml = groupByCounty(cities).map(([county, list]) =>
         `<div style="margin-bottom:6px;"><strong>${esc(county)} County (${list.length}):</strong> ${esc(list.join(', '))}</div>`).join('');
-      const contactRows = [1,2,3,4].map(n => {
+      const contactBlocks = [1,2,3,4].map(n => {
         const name = f[`Contact ${n} Name`];
         if (!name) return '';
-        return `<tr>
-          <td style="padding:3px 8px 3px 0; font-weight:500;">${esc(name)}</td>
-          <td style="padding:3px 8px; color:var(--text-secondary,#666);">${esc(f[`Contact ${n} Role`])}</td>
-          <td style="padding:3px 8px; white-space:nowrap;">${esc(f[`Contact ${n} Phone`])}</td>
-          <td style="padding:3px 0;">${f[`Contact ${n} Email`] ? `<a href="mailto:${esc(f[`Contact ${n} Email`])}" onclick="event.stopPropagation()">${esc(f[`Contact ${n} Email`])}</a>` : ''}</td>
-        </tr>`;
+        const role = f[`Contact ${n} Role`];
+        const phone = f[`Contact ${n} Phone`];
+        const email = f[`Contact ${n} Email`];
+        const emailHtml = email ? `<a href="mailto:${esc(email)}" onclick="event.stopPropagation()">${esc(email)}</a>` : '';
+        return `<div style="margin-bottom:10px; font-size:13px;">
+          <div style="font-weight:500;">${esc(name)}${role ? ` (${esc(role)})` : ''}</div>
+          <div style="font-size:12px; color:var(--text-secondary,#666); white-space:nowrap;">${[esc(phone), emailHtml].filter(Boolean).join(' &middot; ')}</div>
+        </div>`;
       }).join('');
-      const contactHtml = contactRows ? `<table style="font-size:13px; border-collapse:collapse;"><tbody>${contactRows}</tbody></table>` : 'None';
+      const contactHtml = contactBlocks || 'None';
       const doc = f['Document link'] ? `<div style="margin-top:8px;"><a href="${f['Document link']}" target="_blank">Open document</a></div>` : '';
       expandHtml = `<tr class="expand-row"><td colspan="7">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
