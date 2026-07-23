@@ -489,6 +489,18 @@ function toCitiesArray(val) {
   return [];
 }
 
+// Flattens every value on the record — not just the fields this app has explicit UI for — into
+// one lowercase string, so search matches any imported Airtable column, including ones added to
+// the base later that this app doesn't otherwise display or know the name of.
+function recordSearchBlob(f) {
+  return Object.values(f).map(v => {
+    if (Array.isArray(v)) return v.join(' ');
+    if (v == null) return '';
+    if (typeof v === 'object') return Object.values(v).join(' ');
+    return String(v);
+  }).join(' ').toLowerCase();
+}
+
 function builderWebsite(f) {
   return f.Website || '';
 }
@@ -1133,9 +1145,7 @@ function renderTable() {
     if (activeFilters['Building Types'].length && !toCitiesArray(f['Building Types']).some(bt => activeFilters['Building Types'].includes(bt))) return false;
     if (activeFilters.City.length && !toCitiesArray(f['Current Cities']).some(c => activeFilters.City.includes(c))) return false;
     if (!q) return true;
-    const contactBlob = [1,2,3,4].map(n => [f[`Contact ${n} Name`], f[`Contact ${n} Phone`], f[`Contact ${n} Email`], f[`Contact ${n} Role`]].join(' ')).join(' ');
-    const hay = [f.Company, toCitiesArray(f['Company Type']).join(' '), toCitiesArray(f['Current Cities']).join(' '), toCitiesArray(f['Building Types']).join(' '), contactBlob].join(' ').toLowerCase();
-    return hay.includes(q);
+    return recordSearchBlob(f).includes(q);
   });
   rows.sort((a, b) => (a.fields.Company || '').localeCompare(b.fields.Company || ''));
   lastFilteredRows = rows;
