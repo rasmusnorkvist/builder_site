@@ -1195,7 +1195,7 @@ function renderTable() {
         noteSection('Building What', f['Building What']),
       ].join('');
       const legendNotes = [pastCitiesNote, localDecisionMakerNote].filter(Boolean).join('');
-      const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;"><strong>Notes</strong>${noteSections || `<div style="margin-top:6px;"><span style="color:var(--text-secondary,#888); font-style:italic;">No notes yet</span></div>`}${legendNotes}</div>`;
+      const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;"><strong>Notes</strong>${noteSections || `<div style="margin-top:6px;"><span style="color:var(--text-secondary,#888); font-style:italic;">No notes yet</span></div>`}</div>`;
       expandHtml = `<tr class="expand-row"><td colspan="7">
         ${mainOffice}${localDecisionMaker}${associatedCompany}${countyBox}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
@@ -1203,6 +1203,7 @@ function renderTable() {
           <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml}</div>${doc}</div>
         </div>
         ${notesHtml}
+        ${legendNotes}
         <div style="margin-top:10px;"><button data-edit="${r.id}">Edit</button></div>
       </td></tr>`;
     }
@@ -1243,11 +1244,12 @@ function exportToExcel() {
     'Contact 3 Name','Contact 3 Role','Contact 3 Phone','Contact 3 Email',
     'Contact 4 Name','Contact 4 Role','Contact 4 Phone','Contact 4 Email'];
   // A real CSV can't carry any formatting at all, so this builds an HTML table instead — Excel
-  // opens it natively when saved with a .xls extension. Leaving background-color unset entirely
-  // (rather than "transparent" or "#fff") is what actually maps to Excel's "No Fill" cell format —
-  // Excel's HTML importer resolves an explicit transparent/white value to a literal white fill.
+  // opens it natively when saved with a .xls extension. Plain CSS background-color isn't enough:
+  // Excel's own HTML importer still applies its default banded Table style over it. "mso-pattern:none"
+  // is Excel's own (not standard CSS) property for cell fill pattern, and is what it actually reads
+  // to decide a cell has no fill at all, overriding any AutoFormat banding it would otherwise add.
   const theadHtml = `<tr>${headers.map(h =>
-    `<th style="font-weight:bold; text-align:left; padding:4px 8px; border:1px solid #ccc;">${esc(h)}</th>`
+    `<th style="font-weight:bold; text-align:left; padding:4px 8px; border:1px solid #ccc; mso-pattern:none; background:none;">${esc(h)}</th>`
   ).join('')}</tr>`;
   const tbodyHtml = lastFilteredRows.map(r => {
     const f = r.fields;
@@ -1256,7 +1258,7 @@ function exportToExcel() {
       if (h === 'Current Cities' || h === 'Building Types' || h === 'Company Type') v = toCitiesArray(f[h]).join('; ');
       else if (h.endsWith('Email')) v = cleanEmail(f[h]);
       else v = f[h] || '';
-      return `<td style="padding:4px 8px; border:1px solid #ccc;">${esc(v)}</td>`;
+      return `<td style="padding:4px 8px; border:1px solid #ccc; mso-pattern:none; background:none;">${esc(v)}</td>`;
     });
     return `<tr>${cells.join('')}</tr>`;
   }).join('');
