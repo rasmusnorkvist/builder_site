@@ -1242,11 +1242,11 @@ function exportToExcel() {
     'Contact 3 Name','Contact 3 Role','Contact 3 Phone','Contact 3 Email',
     'Contact 4 Name','Contact 4 Role','Contact 4 Phone','Contact 4 Email'];
   // A real CSV can't carry any formatting at all, so this builds an HTML table instead — Excel
-  // opens it natively when saved with a .xls extension. Without an explicit fill, Excel auto-formats
-  // a plain HTML table as one of its own banded "Table" styles (gray/blue striped rows) instead of
-  // leaving cells alone — background-color:transparent here forces actual "No Fill" cells.
+  // opens it natively when saved with a .xls extension. Leaving background-color unset entirely
+  // (rather than "transparent" or "#fff") is what actually maps to Excel's "No Fill" cell format —
+  // Excel's HTML importer resolves an explicit transparent/white value to a literal white fill.
   const theadHtml = `<tr>${headers.map(h =>
-    `<th style="font-weight:bold; text-align:left; padding:4px 8px; border:1px solid #ccc; background-color:transparent;">${esc(h)}</th>`
+    `<th style="font-weight:bold; text-align:left; padding:4px 8px; border:1px solid #ccc;">${esc(h)}</th>`
   ).join('')}</tr>`;
   const tbodyHtml = lastFilteredRows.map(r => {
     const f = r.fields;
@@ -1255,7 +1255,7 @@ function exportToExcel() {
       if (h === 'Current Cities' || h === 'Building Types' || h === 'Company Type') v = toCitiesArray(f[h]).join('; ');
       else if (h.endsWith('Email')) v = cleanEmail(f[h]);
       else v = f[h] || '';
-      return `<td style="padding:4px 8px; border:1px solid #ccc; background-color:transparent;">${esc(v)}</td>`;
+      return `<td style="padding:4px 8px; border:1px solid #ccc;">${esc(v)}</td>`;
     });
     return `<tr>${cells.join('')}</tr>`;
   }).join('');
