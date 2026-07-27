@@ -201,7 +201,7 @@
   }
   .dropdown-toggle:hover { border-color: var(--accent); }
   .dropdown-panel {
-    position: absolute; top: 100%; left: 0; z-index: 20;
+    position: absolute; top: 100%; left: 0; z-index: 60;
     display: flex; flex-direction: column;
     background: #fff; border: 1px solid var(--border);
     border-radius: 3px; margin-top: 6px; min-width: 260px;
@@ -768,10 +768,10 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
 
   // Sizes and positions the open panel so it never gets cut off: matches the panel's width to
   // the toggle (so it's never narrower/smaller-looking than the control it belongs to), and
-  // flips it above the toggle plus clamps the options list to whatever room actually exists
-  // when there isn't enough space below — otherwise a panel near the bottom of the viewport (or
-  // a short list with little room left under it) can render past the visible area with no way
-  // to scroll down to the rest of it.
+  // clamps the options list to whatever room actually exists below the toggle — otherwise a
+  // panel near the bottom of the viewport (or a short list with little room left under it) can
+  // render past the visible area with no way to scroll down to the rest of it. Always opens
+  // downward (never flips above the toggle) so it can never end up behind the sticky header.
   function positionPanel() {
     if (!isOpen) return;
     const toggle = container.querySelector('.dropdown-toggle');
@@ -782,31 +782,16 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     const toggleRect = toggle.getBoundingClientRect();
     panel.style.width = Math.max(260, toggleRect.width) + 'px';
 
-    // Reset to natural (CSS-default) sizing/position before measuring, so a clamp left over
-    // from a previous open doesn't feed back into this calculation.
+    // Reset to natural (CSS-default) sizing before measuring, so a clamp left over from a
+    // previous open doesn't feed back into this calculation.
     optionsEl.style.maxHeight = '';
-    panel.style.top = '100%';
-    panel.style.bottom = 'auto';
-    panel.style.marginTop = '6px';
-    panel.style.marginBottom = '0';
 
     const margin = 12;
     const panelRect = panel.getBoundingClientRect();
     const chromeHeight = panelRect.height - optionsEl.offsetHeight;
     const spaceBelow = window.innerHeight - toggleRect.bottom - margin;
-    const spaceAbove = toggleRect.top - margin;
-    const naturalOptionsHeight = Math.min(240, optionsEl.scrollHeight);
-
-    const openUpward = (chromeHeight + naturalOptionsHeight > spaceBelow) && (spaceAbove > spaceBelow);
-    const available = (openUpward ? spaceAbove : spaceBelow) - chromeHeight;
+    const available = spaceBelow - chromeHeight;
     optionsEl.style.maxHeight = Math.max(80, Math.min(240, available)) + 'px';
-
-    if (openUpward) {
-      panel.style.top = 'auto';
-      panel.style.bottom = '100%';
-      panel.style.marginTop = '0';
-      panel.style.marginBottom = '6px';
-    }
   }
 
   // Full rebuild: used for everything except typing in the search box (open/close, checkbox
@@ -837,7 +822,13 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
 
     container.querySelector('.dropdown-toggle').onclick = (e) => {
       e.stopPropagation();
-      isOpen = !isOpen;
+      const opening = !isOpen;
+      // Closing every other open dropdown before this one opens keeps two panels from ever
+      // rendering on top of each other at once (instance is safe to reference here even though
+      // it's declared further down — this handler only runs on a later user click, by which
+      // point the initial synchronous setup below has already assigned it).
+      if (opening) activeDropdowns.forEach(dd => { if (dd !== instance) dd.close(); });
+      isOpen = opening;
       renderInner();
       const search = container.querySelector('.dropdown-search');
       if (isOpen && search) search.focus();
