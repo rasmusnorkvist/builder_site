@@ -1199,6 +1199,7 @@ function renderTable() {
       </div>`;
       const mainOffice = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Main office</strong> ${f['Main Office City'] ? esc(f['Main Office City']) : missingTag()}</div>`;
       const localDecisionMaker = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local decision maker</strong> ${f['Local Decision Maker'] ? esc(f['Local Decision Maker']) : missingTag()}</div>`;
+      const associatedCompany = f['Associated Company'] ? `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Associated company</strong> ${esc(f['Associated Company'])}</div>` : '';
       const countyBox = `<div style="display:inline-block; margin-bottom:12px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>County</strong> ${toCitiesArray(f['County']).length ? esc(toCitiesArray(f['County']).join(', ')) : missingTag()}</div>`;
       // Unlike the other flagged fields, no notes yet isn't a data gap — just an invitation to
       // add one via Edit, so an empty box gets a neutral placeholder instead of the amber
@@ -1213,7 +1214,7 @@ function renderTable() {
       ].join('');
       const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;"><strong>Notes</strong>${noteSections || `<div style="margin-top:6px;"><span style="color:var(--text-secondary,#888); font-style:italic;">No notes yet</span></div>`}</div>`;
       expandHtml = `<tr class="expand-row"><td colspan="7">
-        ${mainOffice}${localDecisionMaker}${countyBox}
+        ${mainOffice}${localDecisionMaker}${associatedCompany}${countyBox}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
           <div><strong>Cities (${allDisplayCities.length})</strong><div style="margin-top:6px;">${cityHtml || missingTag()}</div>${pastCitiesNote}</div>
           <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml}</div>${doc}</div>
@@ -1361,6 +1362,7 @@ function openForm(id) {
       <div class="field"><label>Building Types</label><div id="fBuildingTypeDD"></div></div>
       <div class="field"><label>Main Office City</label><input id="fMainOffice" value="${esc(f['Main Office City'])}"></div>
       <div class="field"><label>Local Decision Maker</label><input id="fLocalDecisionMaker" value="${esc(f['Local Decision Maker'])}"></div>
+      <div class="field"><label>Associated Company</label><input id="fAssociatedCompany" value="${esc(f['Associated Company'])}"></div>
       <div class="field"><label>County</label><div id="fCountyDD"></div></div>
       <div class="field"><label>Stock Info</label><input id="fStockInfo" value="${esc(f['Stock Info'])}"></div>
       <div class="field"><label>Document link</label><input id="fDoc" value="${esc(f['Document link'])}"></div>
@@ -1447,6 +1449,7 @@ function openForm(id) {
       'Building Types': fBuildingTypeDropdown.getSelected().join(', '),
       'Main Office City': overlay.querySelector('#fMainOffice').value.trim(),
       'Local Decision Maker': overlay.querySelector('#fLocalDecisionMaker').value.trim(),
+      'Associated Company': overlay.querySelector('#fAssociatedCompany').value.trim(),
       County: fCountyDropdown.getSelected().join(', '),
       'Stock Info': overlay.querySelector('#fStockInfo').value.trim(),
       'Document link': overlay.querySelector('#fDoc').value.trim(),
