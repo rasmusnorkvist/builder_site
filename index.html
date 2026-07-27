@@ -1194,12 +1194,13 @@ function renderTable() {
         noteSection('Notes', f['Notes']),
         noteSection('Building What', f['Building What']),
       ].join('');
-      const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;"><strong>Notes</strong>${noteSections || `<div style="margin-top:6px;"><span style="color:var(--text-secondary,#888); font-style:italic;">No notes yet</span></div>`}</div>`;
+      const legendNotes = [pastCitiesNote, localDecisionMakerNote].filter(Boolean).join('');
+      const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;"><strong>Notes</strong>${noteSections || `<div style="margin-top:6px;"><span style="color:var(--text-secondary,#888); font-style:italic;">No notes yet</span></div>`}${legendNotes}</div>`;
       expandHtml = `<tr class="expand-row"><td colspan="7">
         ${mainOffice}${localDecisionMaker}${associatedCompany}${countyBox}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
-          <div><strong>Cities (${allDisplayCities.length})</strong><div style="margin-top:6px;">${cityHtml || missingTag()}</div>${pastCitiesNote}</div>
-          <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml}</div>${localDecisionMakerNote}${doc}</div>
+          <div><strong>Cities (${allDisplayCities.length})</strong><div style="margin-top:6px;">${cityHtml || missingTag()}</div></div>
+          <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml}</div>${doc}</div>
         </div>
         ${notesHtml}
         <div style="margin-top:10px;"><button data-edit="${r.id}">Edit</button></div>
