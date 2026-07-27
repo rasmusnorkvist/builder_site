@@ -520,22 +520,26 @@ function recordSearchBlob(f) {
 
 // Lets the search box be scoped to one meaningful group of fields instead of matching
 // everything at once, for when a broad search returns too many hits to scan.
+// A function declaration (not a const) so it's hoisted like the other search helpers below —
+// render() runs synchronously at startup before this point in the file is reached.
 function derivedCountiesFor(f) {
   return [...toCitiesArray(f['Current Cities']), ...toCitiesArray(f['Past Cities'])]
     .map(c => CITY_COUNTY[c])
     .filter(Boolean)
     .join(' ');
 }
-const SEARCH_CATEGORIES = {
-  'All fields': f => recordSearchBlob(f),
-  'Company': f => (f.Company || '').toLowerCase(),
-  'Company Type': f => toCitiesArray(f['Company Type']).join(' ').toLowerCase(),
-  'Building Types': f => toCitiesArray(f['Building Types']).join(' ').toLowerCase(),
-  'Cities': f => `${[...toCitiesArray(f['Current Cities']), ...toCitiesArray(f['Past Cities'])].join(' ')} ${derivedCountiesFor(f)}`.toLowerCase(),
-  'County': f => `${toCitiesArray(f['County']).join(' ')} ${derivedCountiesFor(f)}`.toLowerCase(),
-  'Contacts': f => [1,2,3,4].flatMap(n => [f[`Contact ${n} Name`], f[`Contact ${n} Role`], f[`Contact ${n} Phone`], cleanEmail(f[`Contact ${n} Email`])]).filter(Boolean).join(' ').toLowerCase(),
-  'Notes': f => [f['Notes'], f['Building What']].filter(Boolean).join(' ').toLowerCase()
-};
+function searchBlobForCategory(category, f) {
+  switch (category) {
+    case 'Company': return (f.Company || '').toLowerCase();
+    case 'Company Type': return toCitiesArray(f['Company Type']).join(' ').toLowerCase();
+    case 'Building Types': return toCitiesArray(f['Building Types']).join(' ').toLowerCase();
+    case 'Cities': return `${[...toCitiesArray(f['Current Cities']), ...toCitiesArray(f['Past Cities'])].join(' ')} ${derivedCountiesFor(f)}`.toLowerCase();
+    case 'County': return `${toCitiesArray(f['County']).join(' ')} ${derivedCountiesFor(f)}`.toLowerCase();
+    case 'Contacts': return [1,2,3,4].flatMap(n => [f[`Contact ${n} Name`], f[`Contact ${n} Role`], f[`Contact ${n} Phone`], cleanEmail(f[`Contact ${n} Email`])]).filter(Boolean).join(' ').toLowerCase();
+    case 'Notes': return [f['Notes'], f['Building What']].filter(Boolean).join(' ').toLowerCase();
+    default: return recordSearchBlob(f);
+  }
+}
 
 function builderWebsite(f) {
   return f.Website || '';
@@ -1175,7 +1179,6 @@ function render() {
 function renderTable() {
   const q = document.getElementById('search').value.toLowerCase();
   const searchCategory = document.getElementById('searchCategory').value;
-  const searchBlobFor = SEARCH_CATEGORIES[searchCategory] || SEARCH_CATEGORIES['All fields'];
   const tbody = document.getElementById('tbody');
   const rows = records.filter(r => {
     const f = r.fields;
@@ -1183,7 +1186,7 @@ function renderTable() {
     if (activeFilters['Building Types'].length && !toCitiesArray(f['Building Types']).some(bt => activeFilters['Building Types'].includes(bt))) return false;
     if (activeFilters.City.length && !toCitiesArray(f['Current Cities']).some(c => activeFilters.City.includes(c))) return false;
     if (!q) return true;
-    return searchBlobFor(f).includes(q);
+    return searchBlobForCategory(searchCategory, f).includes(q);
   });
   rows.sort((a, b) => (a.fields.Company || '').localeCompare(b.fields.Company || ''));
   lastFilteredRows = rows;
