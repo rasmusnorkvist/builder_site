@@ -1168,7 +1168,7 @@ function renderTable() {
       }).join('');
       const contactHtml = contactBlocks || missingTag();
       const localDecisionMakerNote = anyContactIsLocalDecisionMaker
-        ? `<div style="font-size:12px; color:var(--text-secondary,#666); margin-top:6px;"><span style="display:inline-block; width:10px; height:10px; background:#dce8f7; border:1px solid var(--accent); border-radius:3px; margin-right:4px; vertical-align:middle;"></span>Local decision maker: primary contact for approvals in this market</div>`
+        ? `<div style="font-size:12px; color:var(--text-secondary,#666); margin-top:6px;"><span style="display:inline-block; width:10px; height:10px; background:#dce8f7; border:1px solid var(--accent); border-radius:3px; margin-right:4px; vertical-align:middle;"></span>Local decision maker</div>`
         : '';
       // Stock Info has no line at all when absent — not every company is publicly traded, so an
       // empty ticker isn't a gap worth flagging the way a missing document link is.
