@@ -73,7 +73,6 @@
   .map-sidebar h3 { font-size: 13px; margin: 0; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; }
   .map-toggle-btn { font-size: 11px; padding: 3px 8px; }
   #cityMap { height: 300px; border: none; background: transparent; overflow: hidden; }
-  #cityMap .leaflet-grayscale-pane { filter: grayscale(1) contrast(1.05); }
   .city-map-label { background: none; border: none; box-shadow: none; padding: 0; font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9); white-space: nowrap; pointer-events: none; }
   .city-map-label::before { display: none; }
   .map-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
@@ -350,7 +349,7 @@
     <div class="status" id="notesStatus"></div>
     <div class="notes-list" id="notesList"></div>
     <div class="note-add-row">
-      <textarea id="newNoteText" placeholder="Jot down an idea for a future improvement..."></textarea>
+      <textarea id="newNoteText" placeholder="Write down an idea for a future improvement..."></textarea>
       <button class="primary" id="addNoteBtn">Add note</button>
     </div>
   </div>
@@ -365,7 +364,7 @@
   </div>
   <div id="cityMapWrap">
     <div id="cityMap"></div>
-    <div class="map-note">Full-color satellite within Washington, grayscale beyond it. Labeled areas mark cities with an active builder.</div>
+    <div class="map-note">Full-color satellite imagery. Labeled areas mark cities with an active builder.</div>
   </div>
 </div>
 </div>
@@ -391,8 +390,8 @@ document.getElementById('navMapLink').onclick = (e) => {
   sidebar.style.display = '';
   if (cityMap) {
     // The map was sized/rendered while hidden (display:none), so Leaflet needs an explicit
-    // nudge to recheck its container size, then the clip path needs recomputing against it.
-    setTimeout(() => { cityMap.invalidateSize(); updateWaClipPath(); }, 0);
+    // nudge to recheck its container size once it becomes visible again.
+    setTimeout(() => { cityMap.invalidateSize(); }, 0);
   }
   sidebar.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
@@ -433,7 +432,6 @@ const activeDropdowns = [];
 let companyTypeDropdown, buildingTypeDropdown, cityDropdown;
 let cityMap, cityMarkersLayer;
 const CITY_LABEL_MIN_ZOOM = 8;
-let waBoundaryRingsLatLng = [];
 let cityBoundaryCache = {};
 try {
   const savedBoundaries = localStorage.getItem('wa_city_boundary_cache_v2');
@@ -987,69 +985,9 @@ function initMap() {
   const esriUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
   // Base layer: full-color satellite everywhere.
   L.tileLayer(esriUrl, { attribution: 'Tiles &copy; Esri', maxZoom: 16 }).addTo(cityMap);
-  // A second copy of the same imagery, grayscale-filtered (via CSS on its own pane) and
-  // clipped to a "donut" shape (everywhere MINUS Washington), sits on top of the color layer.
-  // Net effect: Washington shows the color layer through the hole; everywhere else shows this
-  // grayscale layer instead of being hidden — so surrounding states are visible but desaturated.
-  cityMap.createPane('grayscale');
-  cityMap.getPane('grayscale').style.zIndex = 350;
-  L.tileLayer(esriUrl, { attribution: '', maxZoom: 16, pane: 'grayscale' }).addTo(cityMap);
   cityMarkersLayer = L.layerGroup().addTo(cityMap);
-  cityMap.on('move zoom', updateWaClipPath);
   cityMap.on('zoomend', updateCityLabelVisibility);
-  loadStateBoundary();
   updateActiveCityMarkers();
-}
-
-// The grayscale layer's clip-path is recomputed on every pan/zoom (via the map's own
-// latLngToContainerPoint) so the color/grayscale split stays aligned with Washington's real
-// outline at the live view, instead of being a fixed shape that only matched one zoom level.
-function geojsonOuterRingsLatLng(geojson) {
-  const toLatLng = ring => ring.map(([lng, lat]) => [lat, lng]);
-  if (geojson.type === 'Polygon') return [toLatLng(geojson.coordinates[0])];
-  if (geojson.type === 'MultiPolygon') return geojson.coordinates.map(poly => toLatLng(poly[0]));
-  return [];
-}
-
-function updateWaClipPath() {
-  if (!cityMap || !waBoundaryRingsLatLng.length) return;
-  const grayscalePane = cityMap.getPane('grayscale');
-  if (!grayscalePane) return;
-  const container = cityMap.getContainer();
-  const w = container.clientWidth || 2000, h = container.clientHeight || 2000;
-  const outerRing = `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
-  const waRings = waBoundaryRingsLatLng.map(ring => {
-    const pts = ring.map(latlng => cityMap.latLngToContainerPoint(latlng));
-    if (!pts.length) return '';
-    return `M${pts.map(p => `${p.x},${p.y}`).join(' L')} Z`;
-  }).filter(Boolean).join(' ');
-  // Note: the fill-rule keyword (evenodd) must be a bare keyword, not a quoted string — quoting
-  // it makes the whole clip-path value invalid, which silently no-ops (no clipping at all) and
-  // makes the grayscale layer cover the entire map, Washington included.
-  grayscalePane.style.clipPath = waRings ? `path(evenodd, '${outerRing} ${waRings}')` : '';
-}
-
-async function loadStateBoundary() {
-  let geojson = null;
-  try {
-    const cached = localStorage.getItem('wa_state_boundary_cache_v1');
-    if (cached) geojson = JSON.parse(cached);
-  } catch (e) { geojson = null; }
-  if (!geojson) {
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?state=Washington&country=USA&format=json&polygon_geojson=1&limit=1`;
-      const res = await fetch(url);
-      const data = await res.json();
-      geojson = data && data[0] && data[0].geojson;
-      if (geojson) {
-        try { localStorage.setItem('wa_state_boundary_cache_v1', JSON.stringify(geojson)); } catch (e) {}
-      }
-    } catch (e) { geojson = null; }
-  }
-  if (!geojson || !cityMap) return;
-  waBoundaryRingsLatLng = geojsonOuterRingsLatLng(geojson);
-  if (!waBoundaryRingsLatLng.length) return;
-  updateWaClipPath();
 }
 
 // Real city-limit polygons come from OpenStreetMap's free Nominatim boundary lookup, fetched
@@ -1304,10 +1242,11 @@ function exportToExcel() {
     'Contact 3 Name','Contact 3 Role','Contact 3 Phone','Contact 3 Email',
     'Contact 4 Name','Contact 4 Role','Contact 4 Phone','Contact 4 Email'];
   // A real CSV can't carry any formatting at all, so this builds an HTML table instead — Excel
-  // opens it natively when saved with a .xls extension, and it renders with bold headers and
-  // no cell background color (plain black-on-white, just a thin grid for readability).
+  // opens it natively when saved with a .xls extension. Without an explicit fill, Excel auto-formats
+  // a plain HTML table as one of its own banded "Table" styles (gray/blue striped rows) instead of
+  // leaving cells alone — background-color:transparent here forces actual "No Fill" cells.
   const theadHtml = `<tr>${headers.map(h =>
-    `<th style="font-weight:bold; text-align:left; padding:4px 8px; border:1px solid #ccc;">${esc(h)}</th>`
+    `<th style="font-weight:bold; text-align:left; padding:4px 8px; border:1px solid #ccc; background-color:transparent;">${esc(h)}</th>`
   ).join('')}</tr>`;
   const tbodyHtml = lastFilteredRows.map(r => {
     const f = r.fields;
@@ -1316,7 +1255,7 @@ function exportToExcel() {
       if (h === 'Current Cities' || h === 'Building Types' || h === 'Company Type') v = toCitiesArray(f[h]).join('; ');
       else if (h.endsWith('Email')) v = cleanEmail(f[h]);
       else v = f[h] || '';
-      return `<td style="padding:4px 8px; border:1px solid #ccc;">${esc(v)}</td>`;
+      return `<td style="padding:4px 8px; border:1px solid #ccc; background-color:transparent;">${esc(v)}</td>`;
     });
     return `<tr>${cells.join('')}</tr>`;
   }).join('');
