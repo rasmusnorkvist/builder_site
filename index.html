@@ -312,6 +312,16 @@
   <div class="offline-banner" id="offlineBanner"></div>
   <div class="toolbar">
     <input type="text" id="search" placeholder="Search builders...">
+    <select id="searchCategory">
+      <option value="All fields">All fields</option>
+      <option value="Company">Company</option>
+      <option value="Company Type">Company Type</option>
+      <option value="Building Types">Building Types</option>
+      <option value="Cities">Cities</option>
+      <option value="County">County</option>
+      <option value="Contacts">Contacts</option>
+      <option value="Notes">Notes</option>
+    </select>
     <button class="primary" id="addBtn">Add company</button>
     <button id="refreshBtn" title="Refresh" aria-label="Refresh">&#8635;</button>
     <button id="exportBtn">Export to Excel</button>
@@ -507,6 +517,25 @@ function recordSearchBlob(f) {
     .join(' ');
   return `${fieldsBlob} ${derivedCounties}`.toLowerCase();
 }
+
+// Lets the search box be scoped to one meaningful group of fields instead of matching
+// everything at once, for when a broad search returns too many hits to scan.
+function derivedCountiesFor(f) {
+  return [...toCitiesArray(f['Current Cities']), ...toCitiesArray(f['Past Cities'])]
+    .map(c => CITY_COUNTY[c])
+    .filter(Boolean)
+    .join(' ');
+}
+const SEARCH_CATEGORIES = {
+  'All fields': f => recordSearchBlob(f),
+  'Company': f => (f.Company || '').toLowerCase(),
+  'Company Type': f => toCitiesArray(f['Company Type']).join(' ').toLowerCase(),
+  'Building Types': f => toCitiesArray(f['Building Types']).join(' ').toLowerCase(),
+  'Cities': f => `${[...toCitiesArray(f['Current Cities']), ...toCitiesArray(f['Past Cities'])].join(' ')} ${derivedCountiesFor(f)}`.toLowerCase(),
+  'County': f => `${toCitiesArray(f['County']).join(' ')} ${derivedCountiesFor(f)}`.toLowerCase(),
+  'Contacts': f => [1,2,3,4].flatMap(n => [f[`Contact ${n} Name`], f[`Contact ${n} Role`], f[`Contact ${n} Phone`], cleanEmail(f[`Contact ${n} Email`])]).filter(Boolean).join(' ').toLowerCase(),
+  'Notes': f => [f['Notes'], f['Building What']].filter(Boolean).join(' ').toLowerCase()
+};
 
 function builderWebsite(f) {
   return f.Website || '';
@@ -1145,6 +1174,8 @@ function render() {
 
 function renderTable() {
   const q = document.getElementById('search').value.toLowerCase();
+  const searchCategory = document.getElementById('searchCategory').value;
+  const searchBlobFor = SEARCH_CATEGORIES[searchCategory] || SEARCH_CATEGORIES['All fields'];
   const tbody = document.getElementById('tbody');
   const rows = records.filter(r => {
     const f = r.fields;
@@ -1152,7 +1183,7 @@ function renderTable() {
     if (activeFilters['Building Types'].length && !toCitiesArray(f['Building Types']).some(bt => activeFilters['Building Types'].includes(bt))) return false;
     if (activeFilters.City.length && !toCitiesArray(f['Current Cities']).some(c => activeFilters.City.includes(c))) return false;
     if (!q) return true;
-    return recordSearchBlob(f).includes(q);
+    return searchBlobFor(f).includes(q);
   });
   rows.sort((a, b) => (a.fields.Company || '').localeCompare(b.fields.Company || ''));
   lastFilteredRows = rows;
@@ -1175,6 +1206,8 @@ function renderTable() {
       const pastCitiesNote = pastCitySet.size
         ? `<div style="font-size:12px; color:var(--text-secondary,#666); margin-top:6px;"><span style="display:inline-block; width:10px; height:10px; background:#fff6d1; border:1px solid #d9b400; border-radius:3px; margin-right:4px; vertical-align:middle;"></span>Past city: this company might no longer operate here</div>`
         : '';
+      const localDecisionMakerName = (f['Local Decision Maker'] || '').trim().toLowerCase();
+      let anyContactIsLocalDecisionMaker = false;
       const contactBlocks = [1,2,3,4].map(n => {
         const name = f[`Contact ${n} Name`];
         if (!name) return '';
@@ -1182,12 +1215,20 @@ function renderTable() {
         const phone = f[`Contact ${n} Phone`];
         const email = cleanEmail(f[`Contact ${n} Email`]);
         const emailHtml = email ? `<a href="mailto:${esc(email)}" onclick="event.stopPropagation()">${esc(email)}</a>` : '';
+        const isLocalDecisionMaker = localDecisionMakerName && name.trim().toLowerCase() === localDecisionMakerName;
+        if (isLocalDecisionMaker) anyContactIsLocalDecisionMaker = true;
+        const ldmDot = isLocalDecisionMaker
+          ? `<span style="display:inline-block; width:8px; height:8px; background:#dce8f7; border:1px solid var(--accent); border-radius:50%; margin-right:5px; vertical-align:middle;"></span>`
+          : '';
         return `<div style="margin-bottom:10px; font-size:13px;">
-          <div style="font-weight:500;">${esc(name)}${role ? ` (${esc(role)})` : ''}</div>
+          <div style="font-weight:500;">${ldmDot}${esc(name)}${role ? ` (${esc(role)})` : ''}</div>
           <div style="font-size:12px; color:var(--text-secondary,#666); white-space:nowrap;">${[esc(phone), emailHtml].filter(Boolean).join(' &middot; ')}</div>
         </div>`;
       }).join('');
       const contactHtml = contactBlocks || missingTag();
+      const localDecisionMakerNote = anyContactIsLocalDecisionMaker
+        ? `<div style="font-size:12px; color:var(--text-secondary,#666); margin-top:6px;"><span style="display:inline-block; width:10px; height:10px; background:#dce8f7; border:1px solid var(--accent); border-radius:3px; margin-right:4px; vertical-align:middle;"></span>Local decision maker: primary contact for approvals in this market</div>`
+        : '';
       // Stock Info has no line at all when absent — not every company is publicly traded, so an
       // empty ticker isn't a gap worth flagging the way a missing document link is.
       const stockLine = f['Stock Info']
@@ -1217,7 +1258,7 @@ function renderTable() {
         ${mainOffice}${localDecisionMaker}${associatedCompany}${countyBox}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
           <div><strong>Cities (${allDisplayCities.length})</strong><div style="margin-top:6px;">${cityHtml || missingTag()}</div>${pastCitiesNote}</div>
-          <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml}</div>${doc}</div>
+          <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml}</div>${localDecisionMakerNote}${doc}</div>
         </div>
         ${notesHtml}
         <div style="margin-top:10px;"><button data-edit="${r.id}">Edit</button></div>
@@ -1314,6 +1355,7 @@ function hasMissingData(f) {
 function setStatus(msg) { document.getElementById('status').textContent = msg; }
 
 document.getElementById('search').oninput = renderTable;
+document.getElementById('searchCategory').onchange = renderTable;
 document.getElementById('refreshBtn').onclick = loadRecords;
 document.getElementById('addBtn').onclick = () => openForm(null);
 
@@ -1337,6 +1379,9 @@ function openForm(id) {
   const allCounties = Array.from(new Set([...Object.values(CITY_COUNTY), ...uniqueVals('County')])).sort();
   const selectedCounties = new Set(toCitiesArray(f['County']));
   function contactBlockHtml(n) {
+    const name = (f[`Contact ${n} Name`] || '').trim().toLowerCase();
+    const ldmName = (f['Local Decision Maker'] || '').trim().toLowerCase();
+    const isChecked = name && ldmName && name === ldmName;
     return `
     <div class="contact-block" data-slot="${n}" style="border-top:1px solid #eee; padding-top:8px; margin-top:8px;">
       <div style="font-size:12px; color:#888; margin-bottom:4px;">Contact ${n}</div>
@@ -1344,6 +1389,7 @@ function openForm(id) {
       <div class="field"><label>Role</label><input id="c${n}Role" value="${esc(f[`Contact ${n} Role`])}"></div>
       <div class="field"><label>Phone</label><input id="c${n}Phone" value="${esc(f[`Contact ${n} Phone`])}"></div>
       <div class="field"><label>Email</label><input id="c${n}Email" value="${esc(cleanEmail(f[`Contact ${n} Email`]))}"></div>
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-ldm-slot="${n}" ${isChecked ? 'checked' : ''}> Local decision maker</label>
     </div>`;
   }
 
@@ -1440,6 +1486,22 @@ function openForm(id) {
     overlay.querySelector('#contactsContainer').insertAdjacentHTML('beforeend', contactBlockHtml(nextSlot));
     refreshAddButtonVisibility();
   };
+
+  // The checkbox is a convenience that copies a contact's name into the free-text Local Decision
+  // Maker field — it isn't a stored link, so a later name edit won't retroactively update the field.
+  overlay.querySelector('#contactsContainer').addEventListener('change', (e) => {
+    const checkbox = e.target.closest('[data-ldm-slot]');
+    if (!checkbox) return;
+    const ldmInput = overlay.querySelector('#fLocalDecisionMaker');
+    const slot = checkbox.dataset.ldmSlot;
+    const nameInput = overlay.querySelector(`#c${slot}Name`);
+    if (checkbox.checked) {
+      ldmInput.value = nameInput ? nameInput.value.trim() : '';
+      overlay.querySelectorAll('[data-ldm-slot]').forEach(cb => { if (cb !== checkbox) cb.checked = false; });
+    } else if (nameInput && ldmInput.value.trim().toLowerCase() === nameInput.value.trim().toLowerCase()) {
+      ldmInput.value = '';
+    }
+  });
 
   function buildFields() {
     const fields = {
