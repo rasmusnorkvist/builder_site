@@ -1328,6 +1328,7 @@ function hasMissingData(f) {
   // no notes yet isn't a data gap — both are optional extras, not something to chase down.
   return !toCitiesArray(f['Company Type']).length
     || !toCitiesArray(f['Building Types']).length
+    || toCitiesArray(f['Building Types']).includes('Unknown')
     || !toCitiesArray(f['Current Cities']).length
     || !toCitiesArray(f['County']).length
     || !builderWebsite(f)
@@ -1364,7 +1365,7 @@ function openForm(id) {
   const allCities = Object.keys(CITY_COUNTY).sort();
   const selectedCities = new Set(toCitiesArray(f['Current Cities']));
   const selectedPastCities = new Set(toCitiesArray(f['Past Cities']));
-  const allBuildingTypes = ['APT', 'SF', 'TH', 'N/A'];
+  const allBuildingTypes = ['APT', 'SF', 'TH', 'N/A', 'Unknown'];
   const selectedBuildingTypes = new Set(toCitiesArray(f['Building Types']));
   const standardCompanyTypes = ['Developer', 'General contractor', 'Remodeler', 'Custom home builder', 'Subcontractor'];
   const existingCompanyTypes = uniqueVals('Company Type');
