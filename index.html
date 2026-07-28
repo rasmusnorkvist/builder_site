@@ -666,7 +666,8 @@ function uniqueVals(key) {
   return Array.from(s).sort();
 }
 
-function createCheckboxDropdown({ container, label, options, initialSelected, searchable, onChange, formatLabel, groupBy, showSelectAll, defaultGroups }) {
+function createCheckboxDropdown({ container, label, options, initialSelected, searchable, onChange, formatLabel, groupBy, showSelectAll, defaultGroups, exclusiveOptions }) {
+  exclusiveOptions = exclusiveOptions || [];
   const selected = new Set(initialSelected || []);
   let isOpen = false;
   let searchQuery = '';
@@ -763,7 +764,16 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
     container.querySelectorAll('.dropdown-option input').forEach(cb => {
       cb.onclick = (e) => e.stopPropagation();
       cb.onchange = () => {
-        cb.checked ? selected.add(cb.value) : selected.delete(cb.value);
+        if (cb.checked) {
+          // Exclusive options (e.g. N/A, Unknown) represent "there's no real building-type
+          // answer here" - so picking one clears any other selection, and picking a normal
+          // option clears whichever exclusive one was active, since the two can't both be true.
+          if (exclusiveOptions.includes(cb.value)) selected.clear();
+          else exclusiveOptions.forEach(v => selected.delete(v));
+          selected.add(cb.value);
+        } else {
+          selected.delete(cb.value);
+        }
         onChange(Array.from(selected));
         renderInner();
         const search = container.querySelector('.dropdown-search');
@@ -1448,6 +1458,7 @@ function openForm(id) {
     options: allBuildingTypes,
     initialSelected: Array.from(selectedBuildingTypes),
     searchable: false,
+    exclusiveOptions: ['N/A', 'Unknown'],
     onChange: () => {}
   });
   const fCompanyTypeDropdown = createCheckboxDropdown({
