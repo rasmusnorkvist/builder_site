@@ -1363,9 +1363,7 @@ function openForm(id) {
   const allCities = Object.keys(CITY_COUNTY).sort();
   const selectedCities = new Set(toCitiesArray(f['Current Cities']));
   const selectedPastCities = new Set(toCitiesArray(f['Past Cities']));
-  const standardBuildingTypes = ['Townhome', 'Single-family', 'Apartments'];
-  const existingBuildingTypes = uniqueVals('Building Types');
-  const allBuildingTypes = Array.from(new Set([...standardBuildingTypes, ...existingBuildingTypes])).sort();
+  const allBuildingTypes = ['APT', 'SF', 'TH'];
   const selectedBuildingTypes = new Set(toCitiesArray(f['Building Types']));
   const standardCompanyTypes = ['Developer', 'General contractor', 'Remodeler', 'Custom home builder', 'Subcontractor'];
   const existingCompanyTypes = uniqueVals('Company Type');
