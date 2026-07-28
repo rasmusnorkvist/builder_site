@@ -1219,7 +1219,7 @@ function renderTable() {
         <div>Document: ${f['Document link'] ? `<a href="${esc(f['Document link'])}" target="_blank" onclick="event.stopPropagation()">Open document</a>` : missingTag()}</div>
         ${stockLine}
       </div>`;
-      const mainOffice = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Main office</strong> ${f['Main Office City'] ? esc(f['Main Office City']) : missingTag()}</div>`;
+      const mainOffice = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local office</strong> ${f['Main Office City'] ? esc(f['Main Office City']) : missingTag()}</div>`;
       const localDecisionMaker = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local decision maker</strong> ${f['Local Decision Maker'] ? esc(f['Local Decision Maker']) : missingTag()}</div>`;
       const associatedCompany = f['Associated Company'] ? `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Associated company</strong> ${esc(f['Associated Company'])}</div>` : '';
       const countyBox = `<div style="display:inline-block; margin-bottom:12px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>County</strong> ${toCitiesArray(f['County']).length ? esc(toCitiesArray(f['County']).join(', ')) : missingTag()}</div>`;
@@ -1402,7 +1402,7 @@ function openForm(id) {
       <div class="field"><label>Cities</label><div id="fCitiesDD"></div></div>
       <div class="field"><label>Past Cities</label><div id="fPastCitiesDD"></div></div>
       <div class="field"><label>Building Types</label><div id="fBuildingTypeDD"></div></div>
-      <div class="field"><label>Main Office City</label><input id="fMainOffice" value="${esc(f['Main Office City'])}"></div>
+      <div class="field"><label>Local Office City</label><input id="fMainOffice" value="${esc(f['Main Office City'])}"></div>
       <div class="field"><label>Local Decision Maker</label><input id="fLocalDecisionMaker" value="${esc(f['Local Decision Maker'])}"></div>
       <div class="field"><label>Associated Company</label><input id="fAssociatedCompany" value="${esc(f['Associated Company'])}"></div>
       <div class="field"><label>County</label><div id="fCountyDD"></div></div>
