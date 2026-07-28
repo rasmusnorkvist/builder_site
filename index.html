@@ -235,7 +235,7 @@
   .dropdown-option:hover { background: #F2F5FA; color: var(--accent); }
   .dropdown-group .dropdown-option { padding-left: 40px; }
   .dropdown-group-checkbox, .dropdown-option input[type="checkbox"] { width: 14px; height: 14px; margin: 0; flex-shrink: 0; }
-  .dropdown-group-checkbox { position: relative; top: 4px; }
+  .field .dropdown-group-checkbox { position: relative; top: 3px; left: -2px; }
   .dropdown-empty { padding: 8px 14px; font-size: 13px; color: var(--text-muted); }
   .dropdown-actions { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--border); }
   .dropdown-actions button { flex: 1; font-size: 12px; padding: 5px 8px; }
@@ -1364,7 +1364,7 @@ function openForm(id) {
   const allCities = Object.keys(CITY_COUNTY).sort();
   const selectedCities = new Set(toCitiesArray(f['Current Cities']));
   const selectedPastCities = new Set(toCitiesArray(f['Past Cities']));
-  const allBuildingTypes = ['APT', 'SF', 'TH'];
+  const allBuildingTypes = ['APT', 'SF', 'TH', 'N/A'];
   const selectedBuildingTypes = new Set(toCitiesArray(f['Building Types']));
   const standardCompanyTypes = ['Developer', 'General contractor', 'Remodeler', 'Custom home builder', 'Subcontractor'];
   const existingCompanyTypes = uniqueVals('Company Type');
