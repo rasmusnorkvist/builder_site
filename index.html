@@ -1262,7 +1262,12 @@ function renderTable() {
       ? `<a href="${esc(website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(f.Company)}</a>`
       : `<span style="color:var(--accent);">${esc(f.Company)}</span> <span style="color:#9A6400; font-style:italic; font-size:12px;">(no website)</span>`;
     const companyTypeCell = toCitiesArray(f['Company Type']).length ? esc(toCitiesArray(f['Company Type']).join(', ')) : missingTag();
-    const buildingTypesCell = toCitiesArray(f['Building Types']).length ? esc(toCitiesArray(f['Building Types']).join(', ')) : missingTag();
+    const buildingTypesArr = toCitiesArray(f['Building Types']);
+    const buildingTypesCell = !buildingTypesArr.length
+      ? missingTag()
+      : buildingTypesArr.includes('Unknown')
+        ? `<span style="color:#9A6400; font-style:italic; font-weight:400;">${esc(buildingTypesArr.join(', '))}</span>`
+        : esc(buildingTypesArr.join(', '));
     const previewCell = cities.length ? esc(preview) : missingTag();
     return `<tr style="cursor:pointer;" data-toggle="${r.id}">
       <td class="chev">${isOpen ? '▾' : '▸'}</td>
