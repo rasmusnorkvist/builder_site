@@ -121,9 +121,19 @@
   .list-controls { display: flex; gap: 8px; margin: 14px 0 6px; }
   .list-controls button { font-size: 12px; padding: 6px 12px; }
   .search-wrap { position: relative; flex: 1; min-width: 0; max-width: 100%; display: flex; align-items: center; }
-  #search { width: 100%; min-width: 0; box-sizing: border-box; padding: 9px 28px 9px 12px; line-height: normal; }
+  #search {
+    width: 100%; min-width: 0; box-sizing: border-box; padding: 7px 28px 7px 12px; line-height: normal;
+    border: 1px solid var(--border-strong); border-radius: 3px; background: #fff; font: inherit; color: var(--navy-800);
+  }
+  #search:hover { border-color: var(--accent); }
   #searchClear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; background: none; padding: 2px 4px; cursor: pointer; color: var(--text-muted); font-size: 16px; line-height: 1; display: none; }
   #searchClear:hover { color: var(--accent); }
+  #searchCategory {
+    padding: 7px 12px; border: 1px solid var(--border-strong); border-radius: 3px;
+    background: #fff; cursor: pointer; font: inherit; color: var(--navy-800); font-weight: 500;
+  }
+  #searchCategory:hover { border-color: var(--accent); }
+  #searchCategory:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(30,76,143,0.15); }
 
   input[type=text], input[type=password] {
     flex: 1; min-width: 200px;
