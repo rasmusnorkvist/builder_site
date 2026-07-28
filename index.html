@@ -121,7 +121,7 @@
   .list-controls { display: flex; gap: 8px; margin: 14px 0 6px; }
   .list-controls button { font-size: 12px; padding: 6px 12px; }
   .search-wrap { position: relative; flex: 1; min-width: 0; max-width: 100%; display: flex; align-items: center; }
-  #search { width: 100%; min-width: 0; box-sizing: border-box; padding-right: 28px; }
+  #search { width: 100%; min-width: 0; box-sizing: border-box; padding: 9px 28px 9px 12px; line-height: normal; }
   #searchClear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; background: none; padding: 2px 4px; cursor: pointer; color: var(--text-muted); font-size: 16px; line-height: 1; display: none; }
   #searchClear:hover { color: var(--accent); }
 
@@ -212,7 +212,7 @@
     box-shadow: var(--shadow-lg);
   }
   .dropdown-search-wrap { position: relative; margin: 10px 10px 0; display: flex; align-items: center; }
-  .dropdown-search { width: 100%; box-sizing: border-box; margin: 0; padding: 8px 26px 8px 10px; border: 1px solid var(--border-strong); border-radius: 3px; }
+  input.dropdown-search { width: 100%; box-sizing: border-box; margin: 0; padding: 8px 26px 8px 10px; border: 1px solid var(--border-strong); border-radius: 3px; line-height: normal; }
   .dd-search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: none; padding: 2px 4px; cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; display: none; }
   .dd-search-clear:hover { color: var(--accent); }
   .dropdown-options { overflow-y: auto; max-height: 240px; padding: 8px 0; }
@@ -280,15 +280,15 @@
 </head>
 <body>
 <header class="site-header">
-  <div class="brand">
+  <a href="#" class="brand" id="homeLink">
     <div class="brand-mark">WA</div>
     <div>
       <div class="brand-name">Company Directory</div>
       <div class="brand-sub">Land Intelligence</div>
     </div>
-  </div>
+  </a>
   <nav class="site-nav">
-    <a href="#">Directory</a>
+    <a href="#" id="navDirectoryLink">Directory</a>
     <a href="#mapSidebar" id="navMapLink">Map</a>
     <a href="#notesBox" id="navNotesLink">Notes</a>
   </nav>
@@ -404,6 +404,14 @@ document.getElementById('navMapLink').onclick = (e) => {
   }
   sidebar.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
+
+function goHome(e) {
+  e.preventDefault();
+  document.getElementById('setupBox').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+document.getElementById('homeLink').onclick = goHome;
+document.getElementById('navDirectoryLink').onclick = goHome;
 
 let API_KEY = '', BASE_ID = '', TABLE = '', NOTES_TABLE = '';
 // The Builders table's own "last modified" field — a fixed name rather than a per-connection
