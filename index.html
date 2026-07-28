@@ -208,12 +208,14 @@
   th .dropdown-box { font-weight: normal; }
   .dropdown-box { position: relative; }
   .dropdown-toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 7px 12px; border: 1px solid var(--border-strong); border-radius: 3px;
     background: #fff; cursor: pointer; min-width: 140px; text-align: left; font: inherit;
     color: var(--navy-800); font-weight: 500;
     text-transform: none; letter-spacing: 0;
   }
   .dropdown-toggle:hover { border-color: var(--accent); }
+  .dropdown-toggle-arrow { line-height: 1; display: inline-flex; align-items: center; flex-shrink: 0; }
   .dropdown-panel {
     position: absolute; top: 100%; left: 0; z-index: 60;
     display: flex; flex-direction: column;
@@ -222,8 +224,8 @@
     box-shadow: var(--shadow-lg);
   }
   .dropdown-search-wrap { position: relative; margin: 10px 10px 0; display: flex; align-items: center; }
-  input.dropdown-search { width: 100%; box-sizing: border-box; margin: 0; padding: 8px 26px 8px 10px; border: 1px solid var(--border-strong); border-radius: 3px; line-height: normal; }
-  .dd-search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: none; padding: 2px 4px; cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; display: none; }
+  input.dropdown-search { width: 100%; box-sizing: border-box; margin: 0; padding: 3px 26px 13px 10px; border: 1px solid var(--border-strong); border-radius: 3px; line-height: normal; }
+  .dd-search-clear { position: absolute; right: 6px; top: calc(50% - 5px); transform: translateY(-50%); border: none; background: none; padding: 2px 4px; cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; display: none; }
   .dd-search-clear:hover { color: var(--accent); }
   .dropdown-options { overflow-y: auto; max-height: 240px; padding: 8px 0; }
   .dropdown-option { display: flex; align-items: center; gap: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; color: var(--navy-800); }
@@ -838,7 +840,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
       </div>` : '';
 
     container.innerHTML = `
-      <button type="button" class="dropdown-toggle">${esc(summary())} ▾</button>
+      <button type="button" class="dropdown-toggle"><span>${esc(summary())}</span><span class="dropdown-toggle-arrow">▾</span></button>
       <div class="dropdown-panel" style="display:${isOpen ? 'flex' : 'none'};">
         ${searchable ? `<div class="dropdown-search-wrap"><input type="text" class="dropdown-search" placeholder="Search..."><button type="button" class="dd-search-clear" aria-label="Clear search">&times;</button></div>` : ''}
         ${actionsHtml}
