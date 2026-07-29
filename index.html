@@ -1393,19 +1393,40 @@ function openForm(id) {
   const selectedCompanyTypes = new Set(toCitiesArray(f['Company Type']));
   const allCounties = Array.from(new Set([...Object.values(CITY_COUNTY), ...uniqueVals('County')])).sort();
   const selectedCounties = new Set(toCitiesArray(f['County']));
-  function contactBlockHtml(n) {
-    const name = (f[`Contact ${n} Name`] || '').trim().toLowerCase();
-    const ldmName = (f['Local Decision Maker'] || '').trim().toLowerCase();
-    const isChecked = name && ldmName && name === ldmName;
+  function contactBlockHtml(n, vals) {
+    vals = vals || {
+      name: f[`Contact ${n} Name`] || '',
+      role: f[`Contact ${n} Role`] || '',
+      phone: f[`Contact ${n} Phone`] || '',
+      email: cleanEmail(f[`Contact ${n} Email`]) || ''
+    };
+    // overlay isn't populated yet during the very first render (this runs while building the
+    // innerHTML string that becomes overlay's own content), so fall back to the record's original
+    // value then - any later call (e.g. after removing a contact) reads the live, possibly-edited field.
+    const ldmInput = overlay.querySelector('#fLocalDecisionMaker');
+    const ldmName = (ldmInput ? ldmInput.value : (f['Local Decision Maker'] || '')).trim().toLowerCase();
+    const isChecked = vals.name && ldmName && vals.name.trim().toLowerCase() === ldmName;
     return `
     <div class="contact-block" data-slot="${n}" style="border-top:1px solid #eee; padding-top:8px; margin-top:8px;">
-      <div style="font-size:12px; color:#888; margin-bottom:4px;">Contact ${n}</div>
-      <div class="field"><label>Name</label><input id="c${n}Name" value="${esc(f[`Contact ${n} Name`])}"></div>
-      <div class="field"><label>Role</label><input id="c${n}Role" value="${esc(f[`Contact ${n} Role`])}"></div>
-      <div class="field"><label>Phone</label><input id="c${n}Phone" value="${esc(f[`Contact ${n} Phone`])}"></div>
-      <div class="field"><label>Email</label><input id="c${n}Email" value="${esc(cleanEmail(f[`Contact ${n} Email`]))}"></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <div style="font-size:12px; color:#888;">Contact ${n}</div>
+        <button type="button" class="remove-contact-btn" style="border:none; background:none; color:var(--danger); font-size:12px; cursor:pointer; padding:0;">Remove</button>
+      </div>
+      <div class="field"><label>Name</label><input id="c${n}Name" value="${esc(vals.name)}"></div>
+      <div class="field"><label>Role</label><input id="c${n}Role" value="${esc(vals.role)}"></div>
+      <div class="field"><label>Phone</label><input id="c${n}Phone" value="${esc(vals.phone)}"></div>
+      <div class="field"><label>Email</label><input id="c${n}Email" value="${esc(vals.email)}"></div>
       <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-ldm-slot="${n}" ${isChecked ? 'checked' : ''}> Local decision maker</label>
     </div>`;
+  }
+
+  function readContactBlockValues(block) {
+    return {
+      name: block.querySelector('input[id$="Name"]').value,
+      role: block.querySelector('input[id$="Role"]').value,
+      phone: block.querySelector('input[id$="Phone"]').value,
+      email: block.querySelector('input[id$="Email"]').value
+    };
   }
 
   const overlay = document.createElement('div');
@@ -1504,6 +1525,23 @@ function openForm(id) {
     overlay.querySelector('#contactsContainer').insertAdjacentHTML('beforeend', contactBlockHtml(nextSlot));
     refreshAddButtonVisibility();
   };
+
+  // Removing a contact re-numbers the remaining ones to close the gap (e.g. removing Contact 1
+  // shifts 2/3/4 up to 1/2/3) rather than leaving empty slots - reads each remaining block's live,
+  // possibly-just-edited values first so nothing typed is lost in the re-render.
+  overlay.querySelector('#contactsContainer').addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.remove-contact-btn');
+    if (!removeBtn) return;
+    const removedBlock = removeBtn.closest('.contact-block');
+    const remainingValues = Array.from(overlay.querySelectorAll('.contact-block'))
+      .filter(block => block !== removedBlock)
+      .map(readContactBlockValues);
+    const container = overlay.querySelector('#contactsContainer');
+    container.innerHTML = remainingValues.length
+      ? remainingValues.map((vals, i) => contactBlockHtml(i + 1, vals)).join('')
+      : contactBlockHtml(1, { name: '', role: '', phone: '', email: '' });
+    refreshAddButtonVisibility();
+  });
 
   // Builds a company info doc from Additional Info Template.docx (embedded as base64) by
   // swapping its "Company Name" placeholder heading for the real name, then downloads it -
