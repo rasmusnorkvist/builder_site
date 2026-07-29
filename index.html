@@ -1653,9 +1653,12 @@ function openForm(id) {
   };
 
   // Each checkbox is a convenience that copies a contact's name into its free-text field (Main
-  // Contact / Local Decision Maker) — neither is a stored link, so a later name edit won't
-  // retroactively update the field. The two checkbox groups are independent: a contact can be
-  // checked as both, checked as only one, or neither.
+  // Contact / Local Decision Maker) — neither is a stored link, just a name copied at this moment.
+  // A later edit to that contact's name in *this* edit session still updates the field live (see
+  // the input listener below), but the connection doesn't persist beyond it: reopening the record
+  // later and renaming the contact won't retroactively follow unless the box is re-checked. The
+  // two checkbox groups are independent: a contact can be checked as both, checked as only one,
+  // or neither.
   overlay.querySelector('#contactsContainer').addEventListener('change', (e) => {
     const mainContactCheckbox = e.target.closest('[data-main-contact-slot]');
     if (mainContactCheckbox) {
@@ -1697,6 +1700,19 @@ function openForm(id) {
     if (emailMatch) {
       const preview = overlay.querySelector(`#c${emailMatch[1]}EmailPreview`);
       if (preview) preview.textContent = e.target.value.trim() ? `→ ${cleanEmail(e.target.value)}` : '';
+      return;
+    }
+    // Keeps the Main Contact / Local Decision Maker free-text field tracking a checked contact's
+    // name live, not just at the moment the box was checked - so typing the name after checking
+    // the box (or renaming a contact that's already checked) still lands the right name in
+    // Airtable, instead of saving whatever the field happened to hold when the box was ticked.
+    const nameMatch = e.target.id.match(/^c(\d)Name$/);
+    if (nameMatch) {
+      const slot = nameMatch[1];
+      const mainCheckbox = overlay.querySelector(`[data-main-contact-slot="${slot}"]`);
+      if (mainCheckbox && mainCheckbox.checked) overlay.querySelector('#fMainContact').value = e.target.value.trim();
+      const ldmCheckbox = overlay.querySelector(`[data-ldm-slot="${slot}"]`);
+      if (ldmCheckbox && ldmCheckbox.checked) overlay.querySelector('#fLocalDecisionMaker').value = e.target.value.trim();
     }
   });
 
