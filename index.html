@@ -601,7 +601,11 @@ function cleanEmail(value) {
   // instead of a plain address — strip that wrapper down to the actual address so it displays
   // and links correctly.
   const markdownLink = trimmed.match(/^\[(.+?)\]\(mailto:(.+?)\)$/i);
-  const address = markdownLink ? (markdownLink[2] || markdownLink[1]).trim() : trimmed;
+  let address = markdownLink ? (markdownLink[2] || markdownLink[1]).trim() : trimmed;
+  // Handles "Display Name <email@domain.com>" header-style addresses (e.g. pasted from an email
+  // client) - only treated as a wrapper if the bracketed part actually looks like an email.
+  const angleBracket = address.match(/<([^<>]+)>/);
+  if (angleBracket && angleBracket[1].includes('@')) address = angleBracket[1].trim();
   // Lowercased unconditionally so "Jane@Company.com" and "jane@company.com" always display and
   // save the same way, regardless of how it was typed or pasted in.
   return address.toLowerCase();
@@ -1441,6 +1445,8 @@ function openForm(id) {
     const ldmName = (f['Local Decision Maker'] || '').trim().toLowerCase();
     const isMainContactChecked = name && mainContactName && name === mainContactName;
     const isChecked = name && ldmName && name === ldmName;
+    const formattedPhone = formatPhone(f[`Contact ${n} Phone`]);
+    const formattedEmail = cleanEmail(f[`Contact ${n} Email`]);
     return `
     <div class="contact-block" data-slot="${n}" style="border-top:1px solid #eee; padding-top:8px; margin-top:8px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -1449,8 +1455,12 @@ function openForm(id) {
       </div>
       <div class="field"><label>Name</label><input id="c${n}Name" value="${esc(f[`Contact ${n} Name`])}"></div>
       <div class="field"><label>Role</label><input id="c${n}Role" value="${esc(f[`Contact ${n} Role`])}"></div>
-      <div class="field"><label>Phone</label><input id="c${n}Phone" value="${esc(formatPhone(f[`Contact ${n} Phone`]))}"></div>
-      <div class="field"><label>Email</label><input id="c${n}Email" value="${esc(cleanEmail(f[`Contact ${n} Email`]))}"></div>
+      <div class="field"><label>Phone</label><input id="c${n}Phone" value="${esc(formattedPhone)}">
+        <div id="c${n}PhonePreview" style="font-size:12px; color:var(--text-secondary,#666); margin-top:4px;">${formattedPhone ? `→ ${esc(formattedPhone)}` : ''}</div>
+      </div>
+      <div class="field"><label>Email</label><input id="c${n}Email" value="${esc(formattedEmail)}">
+        <div id="c${n}EmailPreview" style="font-size:12px; color:var(--text-secondary,#666); margin-top:4px;">${formattedEmail ? `→ ${esc(formattedEmail)}` : ''}</div>
+      </div>
       <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-main-contact-slot="${n}" ${isMainContactChecked ? 'checked' : ''}> Main contact</label>
       <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-ldm-slot="${n}" ${isChecked ? 'checked' : ''}> Local decision maker</label>
     </div>`;
@@ -1468,6 +1478,7 @@ function openForm(id) {
       <div class="field"><label>Company</label><input id="fCompany" value="${esc(f.Company)}"></div>
       <div class="field"><label>Company Type</label><div id="fCompanyTypeDD"></div></div>
       <div class="field"><label>Website</label><input id="fWebsite" value="${esc(f.Website)}"> <button type="button" id="suggestWebsiteBtn">Suggest</button>
+        <div style="font-size:12px; color:#9A6400; margin-top:4px;">Double-check suggested websites — they can be wrong.</div>
         <div id="fWebsiteSuggestions" style="margin-top:6px; font-size:12px;"></div>
       </div>
       <div class="field"><label>Cities</label><div id="fCitiesDD"></div></div>
@@ -1669,6 +1680,23 @@ function openForm(id) {
       overlay.querySelectorAll('[data-ldm-slot]').forEach(cb => { if (cb !== checkbox) cb.checked = false; });
     } else if (nameInput && ldmInput.value.trim().toLowerCase() === nameInput.value.trim().toLowerCase()) {
       ldmInput.value = '';
+    }
+  });
+
+  // Live preview of what a Phone/Email field will actually be saved as, so a paste with mixed
+  // punctuation or a header-style "Name <email>" address shows its normalized form immediately
+  // instead of only on save.
+  overlay.querySelector('#contactsContainer').addEventListener('input', (e) => {
+    const phoneMatch = e.target.id.match(/^c(\d)Phone$/);
+    if (phoneMatch) {
+      const preview = overlay.querySelector(`#c${phoneMatch[1]}PhonePreview`);
+      if (preview) preview.textContent = e.target.value.trim() ? `→ ${formatPhone(e.target.value)}` : '';
+      return;
+    }
+    const emailMatch = e.target.id.match(/^c(\d)Email$/);
+    if (emailMatch) {
+      const preview = overlay.querySelector(`#c${emailMatch[1]}EmailPreview`);
+      if (preview) preview.textContent = e.target.value.trim() ? `→ ${cleanEmail(e.target.value)}` : '';
     }
   });
 
