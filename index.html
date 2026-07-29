@@ -1467,7 +1467,9 @@ function openForm(id) {
       <div class="modal-scroll">
       <div class="field"><label>Company</label><input id="fCompany" value="${esc(f.Company)}"></div>
       <div class="field"><label>Company Type</label><div id="fCompanyTypeDD"></div></div>
-      <div class="field"><label>Website</label><input id="fWebsite" value="${esc(f.Website)}"></div>
+      <div class="field"><label>Website</label><input id="fWebsite" value="${esc(f.Website)}"> <button type="button" id="suggestWebsiteBtn">Suggest</button>
+        <div id="fWebsiteSuggestions" style="margin-top:6px; font-size:12px;"></div>
+      </div>
       <div class="field"><label>Cities</label><div id="fCitiesDD"></div></div>
       <div class="field"><label>Past Cities</label><div id="fPastCitiesDD"></div></div>
       <div class="field"><label>Building Types</label><div id="fBuildingTypeDD"></div></div>
@@ -1491,22 +1493,34 @@ function openForm(id) {
     </div>`;
   document.body.appendChild(overlay);
 
-  // Best-effort website suggestion via Clearbit's free, keyless company-autocomplete API, only
-  // firing when the Website field is still empty so it never clobbers a value the user already
-  // has - and since it just pre-fills the field, typing over it afterward always wins.
-  overlay.querySelector('#fCompany').addEventListener('blur', async () => {
+  // Website suggestion via Clearbit's free, keyless company-autocomplete API. Shows several
+  // candidates to pick from rather than auto-filling the first hit - common company names match
+  // more than one business, so guessing a single result silently was picking the wrong one.
+  const websiteSuggestionsEl = overlay.querySelector('#fWebsiteSuggestions');
+  overlay.querySelector('#suggestWebsiteBtn').onclick = async () => {
     const companyName = overlay.querySelector('#fCompany').value.trim();
-    const websiteInput = overlay.querySelector('#fWebsite');
-    if (!companyName || websiteInput.value.trim()) return;
+    if (!companyName) { alert('Enter a company name first.'); return; }
+    websiteSuggestionsEl.textContent = 'Looking up...';
     try {
       const res = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(companyName)}`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error('lookup failed');
       const results = await res.json();
-      const domain = results && results[0] && results[0].domain;
-      if (domain && !websiteInput.value.trim()) websiteInput.value = `https://${domain}`;
+      if (!results || !results.length) {
+        websiteSuggestionsEl.textContent = 'No matches found - enter the website manually.';
+        return;
+      }
+      websiteSuggestionsEl.innerHTML = results.slice(0, 5).map(r =>
+        `<button type="button" class="website-suggestion-btn" data-domain="${esc(r.domain)}" style="margin:2px 4px 2px 0; font-size:12px; padding:3px 8px;">${esc(r.name || r.domain)} — ${esc(r.domain)}</button>`
+      ).join('');
     } catch (e) {
-      // Silent failure - this is a convenience suggestion, not a required lookup.
+      websiteSuggestionsEl.textContent = "Couldn't look this up right now.";
     }
+  };
+  websiteSuggestionsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.website-suggestion-btn');
+    if (!btn) return;
+    overlay.querySelector('#fWebsite').value = `https://${btn.dataset.domain}`;
+    websiteSuggestionsEl.innerHTML = '';
   });
 
   const fCitiesDropdown = createCheckboxDropdown({
