@@ -1202,26 +1202,47 @@ function renderTable() {
       const pastCitiesNote = pastCitySet.size
         ? `<div style="font-size:12px; color:var(--text-secondary,#666); margin-top:6px;"><span style="display:inline-block; width:10px; height:10px; background:#fff6d1; border:1px solid #d9b400; border-radius:3px; margin-right:4px; vertical-align:middle;"></span>Past city: this company might no longer operate here</div>`
         : '';
+      const mainContactName = (f['Main Contact'] || '').trim().toLowerCase();
       const localDecisionMakerName = (f['Local Decision Maker'] || '').trim().toLowerCase();
+      let anyContactIsMainContact = false;
       let anyContactIsLocalDecisionMaker = false;
-      const contactBlocks = [1,2,3,4].map(n => {
-        const name = f[`Contact ${n} Name`];
-        if (!name) return '';
-        const role = f[`Contact ${n} Role`];
-        const phone = f[`Contact ${n} Phone`];
-        const email = cleanEmail(f[`Contact ${n} Email`]);
-        const emailHtml = email ? `<a href="mailto:${esc(email)}" onclick="event.stopPropagation()">${esc(email)}</a>` : '';
-        const isLocalDecisionMaker = localDecisionMakerName && name.trim().toLowerCase() === localDecisionMakerName;
-        if (isLocalDecisionMaker) anyContactIsLocalDecisionMaker = true;
-        const ldmDot = isLocalDecisionMaker
-          ? `<span style="display:inline-block; width:8px; height:8px; background:#dce8f7; border:1px solid var(--accent); border-radius:50%; margin-right:5px; vertical-align:middle;"></span>`
-          : '';
-        return `<div style="margin-bottom:10px; font-size:13px;">
-          <div style="font-weight:500;">${ldmDot}${esc(name)}${role ? ` (${esc(role)})` : ''}</div>
-          <div style="font-size:12px; color:var(--text-secondary,#666); white-space:nowrap;">${[esc(phone), emailHtml].filter(Boolean).join(' &middot; ')}</div>
-        </div>`;
-      }).join('');
+      // Sort order: main contact first, then local decision maker, then remaining contacts by
+      // their slot number - both are name-matches against Contact N Name, not stored links, so a
+      // contact can rank as both (main contact takes priority in that case) or neither.
+      const contactRank = (n) => {
+        const name = (f[`Contact ${n} Name`] || '').trim().toLowerCase();
+        if (mainContactName && name === mainContactName) return 0;
+        if (localDecisionMakerName && name === localDecisionMakerName) return 1;
+        return 2;
+      };
+      const contactBlocks = [1,2,3,4]
+        .filter(n => f[`Contact ${n} Name`])
+        .sort((a, b) => contactRank(a) - contactRank(b) || a - b)
+        .map(n => {
+          const name = f[`Contact ${n} Name`];
+          const role = f[`Contact ${n} Role`];
+          const phone = f[`Contact ${n} Phone`];
+          const email = cleanEmail(f[`Contact ${n} Email`]);
+          const emailHtml = email ? `<a href="mailto:${esc(email)}" onclick="event.stopPropagation()">${esc(email)}</a>` : '';
+          const isMainContact = mainContactName && name.trim().toLowerCase() === mainContactName;
+          const isLocalDecisionMaker = localDecisionMakerName && name.trim().toLowerCase() === localDecisionMakerName;
+          if (isMainContact) anyContactIsMainContact = true;
+          if (isLocalDecisionMaker) anyContactIsLocalDecisionMaker = true;
+          const mainDot = isMainContact
+            ? `<span style="display:inline-block; width:8px; height:8px; background:#d9f2df; border:1px solid #2E7D32; border-radius:50%; margin-right:5px; vertical-align:middle;"></span>`
+            : '';
+          const ldmDot = isLocalDecisionMaker
+            ? `<span style="display:inline-block; width:8px; height:8px; background:#dce8f7; border:1px solid var(--accent); border-radius:50%; margin-right:5px; vertical-align:middle;"></span>`
+            : '';
+          return `<div style="margin-bottom:10px; font-size:13px;">
+            <div style="font-weight:500;">${mainDot}${ldmDot}${esc(name)}${role ? ` (${esc(role)})` : ''}</div>
+            <div style="font-size:12px; color:var(--text-secondary,#666); white-space:nowrap;">${[esc(phone), emailHtml].filter(Boolean).join(' &middot; ')}</div>
+          </div>`;
+        }).join('');
       const contactHtml = contactBlocks || missingTag();
+      const mainContactNote = anyContactIsMainContact
+        ? `<div style="font-size:12px; color:var(--text-secondary,#666); margin-top:6px;"><span style="display:inline-block; width:10px; height:10px; background:#d9f2df; border:1px solid #2E7D32; border-radius:3px; margin-right:4px; vertical-align:middle;"></span>Main contact</div>`
+        : '';
       const localDecisionMakerNote = anyContactIsLocalDecisionMaker
         ? `<div style="font-size:12px; color:var(--text-secondary,#666); margin-top:6px;"><span style="display:inline-block; width:10px; height:10px; background:#dce8f7; border:1px solid var(--accent); border-radius:3px; margin-right:4px; vertical-align:middle;"></span>Local decision maker</div>`
         : '';
@@ -1235,6 +1256,7 @@ function renderTable() {
         ${stockLine}
       </div>`;
       const mainOffice = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local office</strong> ${f['Main Office City'] ? esc(f['Main Office City']) : missingTag()}</div>`;
+      const mainContactBox = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Main contact</strong> ${f['Main Contact'] ? esc(f['Main Contact']) : `<span style="color:var(--text-secondary,#888); font-style:italic;">Not set</span>`}</div>`;
       const localDecisionMaker = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local decision maker</strong> ${f['Local Decision Maker'] ? esc(f['Local Decision Maker']) : missingTag()}</div>`;
       const associatedCompany = f['Associated Company'] ? `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Associated company</strong> ${esc(f['Associated Company'])}</div>` : '';
       const countyBox = `<div style="display:inline-block; margin-bottom:12px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>County</strong> ${toCitiesArray(f['County']).length ? esc(toCitiesArray(f['County']).join(', ')) : missingTag()}</div>`;
@@ -1249,10 +1271,10 @@ function renderTable() {
         noteSection('Notes', f['Notes']),
         noteSection('Building What', f['Building What']),
       ].join('');
-      const legendNotes = [pastCitiesNote, localDecisionMakerNote].filter(Boolean).join('');
+      const legendNotes = [mainContactNote, localDecisionMakerNote, pastCitiesNote].filter(Boolean).join('');
       const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;"><strong>Notes</strong>${noteSections || `<div style="margin-top:6px;"><span style="color:var(--text-secondary,#888); font-style:italic;">No notes yet</span></div>`}</div>`;
       expandHtml = `<tr class="expand-row"><td colspan="7">
-        ${mainOffice}${localDecisionMaker}${associatedCompany}${countyBox}
+        ${mainOffice}${mainContactBox}${localDecisionMaker}${associatedCompany}${countyBox}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
           <div><strong>Cities (${allDisplayCities.length})</strong><div style="margin-top:6px;">${cityHtml || missingTag()}</div></div>
           <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml}</div>${doc}</div>
@@ -1395,7 +1417,9 @@ function openForm(id) {
   const selectedCounties = new Set(toCitiesArray(f['County']));
   function contactBlockHtml(n) {
     const name = (f[`Contact ${n} Name`] || '').trim().toLowerCase();
+    const mainContactName = (f['Main Contact'] || '').trim().toLowerCase();
     const ldmName = (f['Local Decision Maker'] || '').trim().toLowerCase();
+    const isMainContactChecked = name && mainContactName && name === mainContactName;
     const isChecked = name && ldmName && name === ldmName;
     return `
     <div class="contact-block" data-slot="${n}" style="border-top:1px solid #eee; padding-top:8px; margin-top:8px;">
@@ -1407,6 +1431,7 @@ function openForm(id) {
       <div class="field"><label>Role</label><input id="c${n}Role" value="${esc(f[`Contact ${n} Role`])}"></div>
       <div class="field"><label>Phone</label><input id="c${n}Phone" value="${esc(f[`Contact ${n} Phone`])}"></div>
       <div class="field"><label>Email</label><input id="c${n}Email" value="${esc(cleanEmail(f[`Contact ${n} Email`]))}"></div>
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-main-contact-slot="${n}" ${isMainContactChecked ? 'checked' : ''}> Main contact</label>
       <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-ldm-slot="${n}" ${isChecked ? 'checked' : ''}> Local decision maker</label>
     </div>`;
   }
@@ -1427,6 +1452,7 @@ function openForm(id) {
       <div class="field"><label>Past Cities</label><div id="fPastCitiesDD"></div></div>
       <div class="field"><label>Building Types</label><div id="fBuildingTypeDD"></div></div>
       <div class="field"><label>Local Office City</label><input id="fMainOffice" value="${esc(f['Main Office City'])}"></div>
+      <div class="field"><label>Main Contact</label><input id="fMainContact" value="${esc(f['Main Contact'])}"></div>
       <div class="field"><label>Local Decision Maker</label><input id="fLocalDecisionMaker" value="${esc(f['Local Decision Maker'])}"></div>
       <div class="field"><label>Associated Company</label><input id="fAssociatedCompany" value="${esc(f['Associated Company'])}"></div>
       <div class="field"><label>County</label><div id="fCountyDD"></div></div>
@@ -1563,9 +1589,24 @@ function openForm(id) {
     }
   };
 
-  // The checkbox is a convenience that copies a contact's name into the free-text Local Decision
-  // Maker field — it isn't a stored link, so a later name edit won't retroactively update the field.
+  // Each checkbox is a convenience that copies a contact's name into its free-text field (Main
+  // Contact / Local Decision Maker) — neither is a stored link, so a later name edit won't
+  // retroactively update the field. The two checkbox groups are independent: a contact can be
+  // checked as both, checked as only one, or neither.
   overlay.querySelector('#contactsContainer').addEventListener('change', (e) => {
+    const mainContactCheckbox = e.target.closest('[data-main-contact-slot]');
+    if (mainContactCheckbox) {
+      const mainContactInput = overlay.querySelector('#fMainContact');
+      const slot = mainContactCheckbox.dataset.mainContactSlot;
+      const nameInput = overlay.querySelector(`#c${slot}Name`);
+      if (mainContactCheckbox.checked) {
+        mainContactInput.value = nameInput ? nameInput.value.trim() : '';
+        overlay.querySelectorAll('[data-main-contact-slot]').forEach(cb => { if (cb !== mainContactCheckbox) cb.checked = false; });
+      } else if (nameInput && mainContactInput.value.trim().toLowerCase() === nameInput.value.trim().toLowerCase()) {
+        mainContactInput.value = '';
+      }
+      return;
+    }
     const checkbox = e.target.closest('[data-ldm-slot]');
     if (!checkbox) return;
     const ldmInput = overlay.querySelector('#fLocalDecisionMaker');
@@ -1586,6 +1627,7 @@ function openForm(id) {
       Website: overlay.querySelector('#fWebsite').value.trim(),
       'Building Types': fBuildingTypeDropdown.getSelected().join(', '),
       'Main Office City': overlay.querySelector('#fMainOffice').value.trim(),
+      'Main Contact': overlay.querySelector('#fMainContact').value.trim(),
       'Local Decision Maker': overlay.querySelector('#fLocalDecisionMaker').value.trim(),
       'Associated Company': overlay.querySelector('#fAssociatedCompany').value.trim(),
       County: fCountyDropdown.getSelected().join(', '),
