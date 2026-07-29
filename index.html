@@ -601,7 +601,27 @@ function cleanEmail(value) {
   // instead of a plain address — strip that wrapper down to the actual address so it displays
   // and links correctly.
   const markdownLink = trimmed.match(/^\[(.+?)\]\(mailto:(.+?)\)$/i);
-  return markdownLink ? (markdownLink[2] || markdownLink[1]).trim() : trimmed;
+  const address = markdownLink ? (markdownLink[2] || markdownLink[1]).trim() : trimmed;
+  // Lowercased unconditionally so "Jane@Company.com" and "jane@company.com" always display and
+  // save the same way, regardless of how it was typed or pasted in.
+  return address.toLowerCase();
+}
+
+// Normalizes any phone number typed or pasted in — plain digits, dashes, dots, parens, with or
+// without a leading US country code or a trailing extension — to a consistent xxx-xxx-xxxx
+// display. Anything past the first 10 digits is treated as an extension. Left untouched if there
+// aren't at least 10 digits to format with confidence (e.g. a partial or non-US number).
+function formatPhone(value) {
+  const raw = (value || '').toString().trim();
+  let digits = raw.replace(/\D/g, '');
+  // A genuine 10-digit US number never starts with 1 (NANP area codes can't), so a leading 1 on
+  // anything longer is safely a country code to drop - regardless of whether an extension follows.
+  if (digits.length > 10 && digits[0] === '1') digits = digits.slice(1);
+  if (digits.length < 10) return raw;
+  const base = digits.slice(0, 10);
+  const ext = digits.slice(10);
+  const formatted = `${base.slice(0,3)}-${base.slice(3,6)}-${base.slice(6,10)}`;
+  return ext ? `${formatted} ext. ${ext}` : formatted;
 }
 
 function formatLastEdited(f) {
@@ -1221,7 +1241,7 @@ function renderTable() {
         .map(n => {
           const name = f[`Contact ${n} Name`];
           const role = f[`Contact ${n} Role`];
-          const phone = f[`Contact ${n} Phone`];
+          const phone = formatPhone(f[`Contact ${n} Phone`]);
           const email = cleanEmail(f[`Contact ${n} Email`]);
           const emailHtml = email ? `<a href="mailto:${esc(email)}" onclick="event.stopPropagation()">${esc(email)}</a>` : '';
           const isMainContact = mainContactName && name.trim().toLowerCase() === mainContactName;
@@ -1429,7 +1449,7 @@ function openForm(id) {
       </div>
       <div class="field"><label>Name</label><input id="c${n}Name" value="${esc(f[`Contact ${n} Name`])}"></div>
       <div class="field"><label>Role</label><input id="c${n}Role" value="${esc(f[`Contact ${n} Role`])}"></div>
-      <div class="field"><label>Phone</label><input id="c${n}Phone" value="${esc(f[`Contact ${n} Phone`])}"></div>
+      <div class="field"><label>Phone</label><input id="c${n}Phone" value="${esc(formatPhone(f[`Contact ${n} Phone`]))}"></div>
       <div class="field"><label>Email</label><input id="c${n}Email" value="${esc(cleanEmail(f[`Contact ${n} Email`]))}"></div>
       <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-main-contact-slot="${n}" ${isMainContactChecked ? 'checked' : ''}> Main contact</label>
       <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-ldm-slot="${n}" ${isChecked ? 'checked' : ''}> Local decision maker</label>
@@ -1470,6 +1490,24 @@ function openForm(id) {
       </div>
     </div>`;
   document.body.appendChild(overlay);
+
+  // Best-effort website suggestion via Clearbit's free, keyless company-autocomplete API, only
+  // firing when the Website field is still empty so it never clobbers a value the user already
+  // has - and since it just pre-fills the field, typing over it afterward always wins.
+  overlay.querySelector('#fCompany').addEventListener('blur', async () => {
+    const companyName = overlay.querySelector('#fCompany').value.trim();
+    const websiteInput = overlay.querySelector('#fWebsite');
+    if (!companyName || websiteInput.value.trim()) return;
+    try {
+      const res = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(companyName)}`);
+      if (!res.ok) return;
+      const results = await res.json();
+      const domain = results && results[0] && results[0].domain;
+      if (domain && !websiteInput.value.trim()) websiteInput.value = `https://${domain}`;
+    } catch (e) {
+      // Silent failure - this is a convenience suggestion, not a required lookup.
+    }
+  });
 
   const fCitiesDropdown = createCheckboxDropdown({
     container: overlay.querySelector('#fCitiesDD'),
@@ -1640,8 +1678,8 @@ function openForm(id) {
       const block = overlay.querySelector(`.contact-block[data-slot="${n}"]`);
       fields[`Contact ${n} Name`] = block ? block.querySelector(`#c${n}Name`).value.trim() : '';
       fields[`Contact ${n} Role`] = block ? block.querySelector(`#c${n}Role`).value.trim() : '';
-      fields[`Contact ${n} Phone`] = block ? block.querySelector(`#c${n}Phone`).value.trim() : '';
-      fields[`Contact ${n} Email`] = block ? block.querySelector(`#c${n}Email`).value.trim() : '';
+      fields[`Contact ${n} Phone`] = block ? formatPhone(block.querySelector(`#c${n}Phone`).value) : '';
+      fields[`Contact ${n} Email`] = block ? cleanEmail(block.querySelector(`#c${n}Email`).value) : '';
     });
     fields['Current Cities'] = fCitiesDropdown.getSelected().join(', ');
     fields['Past Cities'] = fPastCitiesDropdown.getSelected().join(', ');
