@@ -564,6 +564,13 @@ function derivedCountiesFor(f) {
     .filter(Boolean)
     .join(' ');
 }
+// Strips punctuation that varies between how a name is typed and how it's stored - "D.R. Horton"
+// vs "DR Horton", "O'Brien" vs "OBrien" - so a search matches regardless of which form was used,
+// instead of requiring an exact substring match including that punctuation.
+function normalizeSearchText(s) {
+  return (s || '').toString().toLowerCase().replace(/[.,'"()&/\\-]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 function searchBlobForCategory(category, f) {
   switch (category) {
     case 'Company': return (f.Company || '').toLowerCase();
@@ -1194,7 +1201,7 @@ function render() {
 }
 
 function renderTable() {
-  const q = document.getElementById('search').value.toLowerCase();
+  const q = normalizeSearchText(document.getElementById('search').value);
   const searchCategory = document.getElementById('searchCategory').value;
   const tbody = document.getElementById('tbody');
   const rows = records.filter(r => {
@@ -1203,7 +1210,7 @@ function renderTable() {
     if (activeFilters['Building Types'].length && !toCitiesArray(f['Building Types']).some(bt => activeFilters['Building Types'].includes(bt))) return false;
     if (activeFilters.City.length && !toCitiesArray(f['Current Cities']).some(c => activeFilters.City.includes(c))) return false;
     if (!q) return true;
-    return searchBlobForCategory(searchCategory, f).includes(q);
+    return normalizeSearchText(searchBlobForCategory(searchCategory, f)).includes(q);
   });
   rows.sort((a, b) => (a.fields.Company || '').localeCompare(b.fields.Company || ''));
   lastFilteredRows = rows;
