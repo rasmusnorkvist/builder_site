@@ -288,6 +288,9 @@
     box-shadow: var(--shadow-sm);
   }
   .notes-box h3 { margin: 0 0 14px; font-size: 16px; }
+  .notes-box-toggle { cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; }
+  .notes-box-toggle:hover { color: var(--accent); }
+  .notes-box-chev { font-size: 14px; color: var(--text-muted); transition: color .12s; }
   .notes-list { margin: 0 0 14px; }
   .note-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
   .note-item:last-child { border-bottom: none; }
@@ -315,7 +318,7 @@
   <nav class="site-nav">
     <a href="#" id="navDirectoryLink">Directory</a>
     <a href="#mapSidebar" id="navMapLink">Map</a>
-    <a href="#notesBox" id="navNotesLink">Notes</a>
+    <a href="#notesBox" id="navNotesLink">Future Improvements</a>
   </nav>
 </header>
 <div class="page-wrap">
@@ -379,12 +382,14 @@
   </table>
 
   <div class="notes-box" id="notesBox">
-    <h3>Notes: future improvements</h3>
-    <div class="status" id="notesStatus"></div>
-    <div class="notes-list" id="notesList"></div>
-    <div class="note-add-row">
-      <textarea id="newNoteText" placeholder="Write down an idea for a future improvement..."></textarea>
-      <button class="primary" id="addNoteBtn">Add note</button>
+    <h3 class="notes-box-toggle" id="notesBoxToggle"><span class="notes-box-chev" id="notesBoxChev">&#9656;</span>Notes: future improvements</h3>
+    <div class="notes-box-body" id="notesBoxBody" style="display:none;">
+      <div class="status" id="notesStatus"></div>
+      <div class="notes-list" id="notesList"></div>
+      <div class="note-add-row">
+        <textarea id="newNoteText" placeholder="Write down an idea for a future improvement..."></textarea>
+        <button class="primary" id="addNoteBtn">Add note</button>
+      </div>
     </div>
   </div>
 </div>
@@ -416,6 +421,14 @@ document.getElementById('collapseAllBtn').onclick = () => {
 
 document.getElementById('mapToggleBtn').onclick = () => {
   document.getElementById('mapSidebar').style.display = 'none';
+};
+
+document.getElementById('notesBoxToggle').onclick = () => {
+  const body = document.getElementById('notesBoxBody');
+  const chev = document.getElementById('notesBoxChev');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  chev.textContent = isOpen ? '▸' : '▾';
 };
 
 document.getElementById('navMapLink').onclick = (e) => {
@@ -1299,19 +1312,19 @@ function renderTable() {
       const localDecisionMaker = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local decision maker</strong> ${f['Local Decision Maker'] ? esc(f['Local Decision Maker']) : missingTag()}</div>`;
       const associatedCompany = f['Associated Company'] ? `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Associated company</strong> ${esc(f['Associated Company'])}</div>` : '';
       const countyBox = `<div style="display:inline-block; margin-bottom:12px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>County</strong> ${toCitiesArray(f['County']).length ? esc(toCitiesArray(f['County']).join(', ')) : missingTag()}</div>`;
-      // Unlike the other flagged fields, no notes yet isn't a data gap — just an invitation to
-      // add one via Edit, so an empty box gets a neutral placeholder instead of the amber
-      // "Missing" tag. Four separate Airtable columns feed this one box, each as its own labeled
-      // sub-section, omitted individually when that column is empty.
       function noteSection(label, value) {
         return value ? `<div style="margin-top:6px;"><strong>${esc(label)}</strong><div style="white-space:pre-wrap; font-size:13px; color:var(--text-secondary,#444);">${esc(value)}</div></div>` : '';
       }
-      const noteSections = [
-        noteSection('Notes', f['Notes']),
-        noteSection('Building What', f['Building What']),
-      ].join('');
       const legendNotes = [mainContactNote, localDecisionMakerNote, pastCitiesNote].filter(Boolean).join('');
-      const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;"><strong>Notes</strong>${noteSections || `<div style="margin-top:6px;"><span style="color:var(--text-secondary,#888); font-style:italic;">No notes yet</span></div>`}</div>`;
+      const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;">
+        <strong>Notes</strong>
+        <div style="display:flex; gap:8px; margin-top:6px; align-items:flex-start;">
+          <textarea data-notes-input="${r.id}" placeholder="No notes yet — write one and click Save" style="flex:1; padding:8px 10px; border:1px solid var(--border-strong,#ccc); border-radius:4px; font:inherit; font-size:13px; resize:vertical; min-height:60px;">${esc(f['Notes'] || '')}</textarea>
+          <button data-save-notes="${r.id}">Save</button>
+        </div>
+        <div class="status" data-notes-status="${r.id}" style="margin:4px 2px 0; min-height:14px;"></div>
+        ${noteSection('Building What', f['Building What'])}
+      </div>`;
       expandHtml = `<tr class="expand-row"><td colspan="7">
         ${mainOffice}${mainContactBox}${localDecisionMaker}${associatedCompany}${countyBox}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
@@ -1355,6 +1368,22 @@ function renderTable() {
   });
   tbody.querySelectorAll('[data-edit]').forEach(b => b.onclick = (e) => { e.stopPropagation(); openForm(b.dataset.edit); });
   tbody.querySelectorAll('[data-del]').forEach(b => b.onclick = (e) => { e.stopPropagation(); deleteRecord(b.dataset.del); });
+  tbody.querySelectorAll('[data-save-notes]').forEach(b => b.onclick = async (e) => {
+    e.stopPropagation();
+    const id = b.dataset.saveNotes;
+    const textarea = tbody.querySelector(`[data-notes-input="${id}"]`);
+    const statusEl = tbody.querySelector(`[data-notes-status="${id}"]`);
+    if (!navigator.onLine) { statusEl.textContent = "You're offline. Changes can't be saved right now."; return; }
+    b.disabled = true;
+    statusEl.textContent = 'Saving...';
+    try {
+      await airtableFetch(TABLE, `/${id}`, { method: 'PATCH', body: JSON.stringify({ fields: { Notes: textarea.value }, typecast: true }) });
+      await loadRecords();
+    } catch (err) {
+      statusEl.textContent = 'Save failed: ' + err.message;
+      b.disabled = false;
+    }
+  });
   updateActiveCityMarkers();
 }
 
