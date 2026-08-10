@@ -1474,6 +1474,13 @@ document.getElementById('searchCategory').onchange = renderTable;
 document.getElementById('refreshBtn').onclick = loadRecords;
 document.getElementById('addBtn').onclick = () => openForm(null);
 
+function lockBodyScroll() {
+  document.body.style.overflow = 'hidden';
+}
+function unlockBodyScrollIfNoOverlaysLeft() {
+  if (!document.querySelector('.modal-overlay')) document.body.style.overflow = '';
+}
+
 function openForm(id) {
   const rec = id ? records.find(r => r.id === id) : null;
   const f = rec ? rec.fields : {};
@@ -1572,6 +1579,7 @@ function openForm(id) {
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  lockBodyScroll();
 
   // Website suggestion via Clearbit's free, keyless company-autocomplete API. Shows several
   // candidates to pick from rather than auto-filling the first hit - common company names match
@@ -1844,6 +1852,7 @@ function openForm(id) {
       }
       forgetFormDropdowns();
       overlay.remove();
+      unlockBodyScrollIfNoOverlaysLeft();
       await loadRecords();
       return true;
     } catch (e) {
@@ -1870,7 +1879,8 @@ function openForm(id) {
           </div>
         </div>`;
       document.body.appendChild(confirmOverlay);
-      const cleanup = (result) => { confirmOverlay.remove(); resolve(result); };
+      lockBodyScroll();
+      const cleanup = (result) => { confirmOverlay.remove(); unlockBodyScrollIfNoOverlaysLeft(); resolve(result); };
       confirmOverlay.querySelector('#promptKeepEditing').onclick = () => cleanup('cancel');
       confirmOverlay.querySelector('#promptDiscard').onclick = () => cleanup('discard');
       confirmOverlay.querySelector('#promptSave').onclick = () => cleanup('save');
@@ -1881,6 +1891,7 @@ function openForm(id) {
     if (!hasUnsavedChanges()) {
       forgetFormDropdowns();
       overlay.remove();
+      unlockBodyScrollIfNoOverlaysLeft();
       return;
     }
     const choice = await promptUnsavedChanges();
@@ -1888,6 +1899,7 @@ function openForm(id) {
     if (choice === 'discard') {
       forgetFormDropdowns();
       overlay.remove();
+      unlockBodyScrollIfNoOverlaysLeft();
       return;
     }
     if (choice === 'save') await doSave();
@@ -1900,6 +1912,7 @@ function openForm(id) {
       await deleteRecord(id);
       forgetFormDropdowns();
       overlay.remove();
+      unlockBodyScrollIfNoOverlaysLeft();
     };
   }
 
