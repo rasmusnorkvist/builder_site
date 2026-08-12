@@ -1303,9 +1303,6 @@ function renderTable() {
       </div>`;
       const mainOffice = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local office</strong> ${f['Main Office City'] ? esc(f['Main Office City']) : missingTag()}</div>`;
       const associatedCompany = f['Associated Company'] ? `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Associated company</strong> ${esc(f['Associated Company'])}</div>` : '';
-      function noteSection(label, value) {
-        return value ? `<div style="margin-top:6px;"><strong>${esc(label)}</strong><div style="white-space:pre-wrap; font-size:13px; color:var(--text-secondary,#444);">${esc(value)}</div></div>` : '';
-      }
       const legendNotes = [mainContactNote, localDecisionMakerNote, pastCitiesNote].filter(Boolean).join('');
       const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;">
         <strong>Notes</strong>
@@ -1314,7 +1311,6 @@ function renderTable() {
           <button data-save-notes="${r.id}">Save</button>
         </div>
         <div class="status" data-notes-status="${r.id}" style="margin:4px 2px 0; min-height:14px;"></div>
-        ${noteSection('Building What', f['Building What'])}
       </div>`;
       expandHtml = `<tr class="expand-row"><td colspan="7">
         ${mainOffice}${associatedCompany}
@@ -1551,7 +1547,6 @@ function openForm(id) {
         <button type="button" id="addDocLinkBtn" style="margin-top:8px;">+ Add link</button>
       </div>
       <div class="field"><label>Notes</label><textarea id="fNotes" rows="3">${esc(f['Notes'])}</textarea></div>
-      <div class="field"><label>Building What</label><textarea id="fBuildingWhat" rows="3">${esc(f['Building What'])}</textarea></div>
       <div id="contactsContainer">${activeContacts.map(contactBlockHtml).join('')}</div>
       <button type="button" id="addContactBtn" style="margin-top:8px;">+ Add contact</button>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
@@ -1801,8 +1796,7 @@ function openForm(id) {
       County: fCountyDropdown.getSelected().join(', '),
       'Stock Info': overlay.querySelector('#fStockInfo').value.trim(),
       'Document link': Array.from(overlay.querySelectorAll('.doc-link-input')).map(inp => inp.value.trim()).filter(Boolean).join(', '),
-      Notes: overlay.querySelector('#fNotes').value.trim(),
-      'Building What': overlay.querySelector('#fBuildingWhat').value.trim()
+      Notes: overlay.querySelector('#fNotes').value.trim()
     };
     [1,2,3,4].forEach(n => {
       const block = overlay.querySelector(`.contact-block[data-slot="${n}"]`);
