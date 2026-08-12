@@ -170,7 +170,7 @@
     border-radius: 4px;
     box-shadow: var(--shadow-sm);
   }
-  /* No overflow:hidden on the table — it would clip the filter dropdown panels, which are
+  /* No overflow:hidden on the table: it would clip the filter dropdown panels, which are
      absolutely positioned descendants of the header cells. Rounded corners are faked instead by
      rounding just the outermost cells. */
   thead tr:first-child th:first-child { border-top-left-radius: 4px; }
@@ -448,7 +448,7 @@ document.getElementById('homeLink').onclick = goHome;
 document.getElementById('navDirectoryLink').onclick = goHome;
 
 let API_KEY = '', BASE_ID = '', TABLE = '', NOTES_TABLE = '';
-// The Builders table's own "last modified" field — a fixed name rather than a per-connection
+// The Builders table's own "last modified" field, a fixed name rather than a per-connection
 // setting, since it's just a column on the same table being connected to, not a separate source.
 const LAST_EDITED_FIELD = 'Last Modified';
 
@@ -556,7 +556,7 @@ function toCitiesArray(val) {
   return [];
 }
 
-// Flattens every value on the record — not just the fields this app has explicit UI for — into
+// Flattens every value on the record (not just the fields this app has explicit UI for) into
 // one lowercase string, so search matches any imported Airtable column, including ones added to
 // the base later that this app doesn't otherwise display or know the name of.
 function recordSearchBlob(f) {
@@ -577,7 +577,7 @@ function recordSearchBlob(f) {
 
 // Lets the search box be scoped to one meaningful group of fields instead of matching
 // everything at once, for when a broad search returns too many hits to scan.
-// A function declaration (not a const) so it's hoisted like the other search helpers below —
+// A function declaration (not a const) so it's hoisted like the other search helpers below:
 // render() runs synchronously at startup before this point in the file is reached.
 function derivedCountiesFor(f) {
   return [...toCitiesArray(f['Current Cities']), ...toCitiesArray(f['Past Cities'])]
@@ -612,12 +612,12 @@ function builderWebsite(f) {
 function stockInfoUrl(value) {
   let trimmed = (value || '').toString().trim();
   if (!trimmed) return '';
-  // Airtable's Stock Info column usually holds just a ticker (e.g. "AAPL"), not a full URL —
-  // using that raw value as an href silently linked to a relative, nonexistent local page
+  // Airtable's Stock Info column usually holds just a ticker (e.g. "AAPL"), not a full URL,
+  // so using that raw value as an href silently linked to a relative, nonexistent local page
   // instead of navigating anywhere. Build a real Yahoo Finance URL from it; if the field
   // already contains a full URL (some records might), leave it untouched.
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  // Strip exchange-prefixed notation like "NASDAQ: AAPL" or "NYSE:XYZ" down to just the ticker —
+  // Strip exchange-prefixed notation like "NASDAQ: AAPL" or "NYSE:XYZ" down to just the ticker:
   // Yahoo's quote URL only wants the symbol itself.
   if (trimmed.includes(':')) trimmed = trimmed.split(':').pop().trim();
   return `https://finance.yahoo.com/quote/${encodeURIComponent(trimmed)}`;
@@ -626,7 +626,7 @@ function stockInfoUrl(value) {
 function cleanEmail(value) {
   const trimmed = (value || '').toString().trim();
   // Some contact emails were saved as a markdown link, e.g. "[a@b.com](mailto:a@b.com)",
-  // instead of a plain address — strip that wrapper down to the actual address so it displays
+  // instead of a plain address. Strip that wrapper down to the actual address so it displays
   // and links correctly.
   const markdownLink = trimmed.match(/^\[(.+?)\]\(mailto:(.+?)\)$/i);
   let address = markdownLink ? (markdownLink[2] || markdownLink[1]).trim() : trimmed;
@@ -639,8 +639,8 @@ function cleanEmail(value) {
   return address.toLowerCase();
 }
 
-// Normalizes any phone number typed or pasted in — plain digits, dashes, dots, parens, with or
-// without a leading US country code or a trailing extension — to a consistent xxx-xxx-xxxx
+// Normalizes any phone number typed or pasted in (plain digits, dashes, dots, parens, with or
+// without a leading US country code or a trailing extension) to a consistent xxx-xxx-xxxx
 // display. Anything past the first 10 digits is treated as an extension. Left untouched if there
 // aren't at least 10 digits to format with confidence (e.g. a partial or non-US number).
 function formatPhone(value) {
@@ -759,7 +759,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
 
   function allSelectableOptions() {
     // "Select all" targets every option that matches the current search (or all options
-    // when there's no search) — deliberately ignoring the default/see-more group restriction,
+    // when there's no search), deliberately ignoring the default/see-more group restriction,
     // so it can reach cities in counties that aren't currently shown.
     return options.filter(isVisible);
   }
@@ -871,7 +871,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
 
   // Sizes and positions the open panel so it never gets cut off: matches the panel's width to
   // the toggle (so it's never narrower/smaller-looking than the control it belongs to), and
-  // clamps the options list to whatever room actually exists below the toggle — otherwise a
+  // clamps the options list to whatever room actually exists below the toggle: otherwise a
   // panel near the bottom of the viewport (or a short list with little room left under it) can
   // render past the visible area with no way to scroll down to the rest of it. Always opens
   // downward (never flips above the toggle) so it can never end up behind the sticky header.
@@ -899,7 +899,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
 
   // Full rebuild: used for everything except typing in the search box (open/close, checkbox
   // clicks, group toggles, select-all, see-more). Typing uses refreshOptionsOnly() instead so the
-  // search <input> itself is never destroyed mid-keystroke — that was the actual cause of only
+  // search <input> itself is never destroyed mid-keystroke: that was the actual cause of only
   // being able to type one letter at a time (rebuilding it on every keystroke silently lost focus).
   function renderInner() {
     const optionsEl = container.querySelector('.dropdown-options');
@@ -928,7 +928,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
       const opening = !isOpen;
       // Closing every other open dropdown before this one opens keeps two panels from ever
       // rendering on top of each other at once (instance is safe to reference here even though
-      // it's declared further down — this handler only runs on a later user click, by which
+      // it's declared further down: this handler only runs on a later user click, by which
       // point the initial synchronous setup below has already assigned it).
       if (opening) activeDropdowns.forEach(dd => { if (dd !== instance) dd.close(); });
       isOpen = opening;
@@ -981,7 +981,7 @@ function createCheckboxDropdown({ container, label, options, initialSelected, se
 
   // Lightweight update for search-as-you-type: only touches the options list, the see-more
   // slot, and the toggle-all button label. Never recreates the search <input>, so focus and
-  // cursor position are simply never disturbed — no restoration hack needed.
+  // cursor position are simply never disturbed, so no restoration hack is needed.
   function refreshOptionsOnly() {
     const optionsEl = container.querySelector('.dropdown-options');
     const prevScrollTop = optionsEl ? optionsEl.scrollTop : 0;
@@ -1087,7 +1087,7 @@ function groupByCounty(cities) {
 }
 
 function initMap() {
-  if (typeof L === 'undefined') return; // Leaflet CDN failed to load (offline/blocked) — skip gracefully
+  if (typeof L === 'undefined') return; // Leaflet CDN failed to load (offline/blocked), skip gracefully
   cityMap = L.map('cityMap', { scrollWheelZoom: false }).setView([47.4, -120.7], 7);
   const esriUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
   // Base layer: full-color satellite everywhere.
@@ -1118,7 +1118,7 @@ function cityLabelOptions() {
 }
 
 function drawCircleLayer(city, coords, count) {
-  const radius = 2500 + Math.min(count, 10) * 700; // meters — grows with builder coverage, capped
+  const radius = 2500 + Math.min(count, 10) * 700; // meters, grows with builder coverage, capped
   cityCircleLayers[city] = L.circle(coords, { radius, color: '#B5502E', fillColor: '#B5502E', fillOpacity: 0.3, weight: 1.5 })
     .bindTooltip(city, cityLabelOptions())
     .addTo(cityMarkersLayer);
@@ -1145,9 +1145,9 @@ function updateCityLabelVisibility() {
 function applyBoundaryIfStillActive(city) {
   if (!cityMarkersLayer) return;
   const geojson = cityBoundaryCache[city];
-  if (!geojson) return; // fetch failed or no boundary available — keep the circle
+  if (!geojson) return; // fetch failed or no boundary available, keep the circle
   const count = cityActiveCounts()[city];
-  if (!count) return; // filters changed since this was queued — city isn't shown anymore
+  if (!count) return; // filters changed since this was queued, city isn't shown anymore
   const oldLayer = cityCircleLayers[city];
   if (oldLayer) cityMarkersLayer.removeLayer(oldLayer);
   drawBoundaryLayer(city, geojson, count);
@@ -1166,7 +1166,7 @@ async function runBoundaryFetchQueue() {
   while (boundaryFetchQueue.length) {
     const city = boundaryFetchQueue.shift();
     try {
-      // Structured query (city=/state=/country=) instead of a freeform q= string — freeform search
+      // Structured query (city=/state=/country=) instead of a freeform q= string: freeform search
       // ranks "X County" above the city "X" itself for towns that share their county's name
       // (e.g. Snohomish, Spokane), so plain-text search returns the wrong (county) boundary.
       const url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(city)}&state=Washington&country=USA&format=json&polygon_geojson=1&limit=1`;
@@ -1308,7 +1308,7 @@ function renderTable() {
       const localDecisionMakerNote = anyContactIsLocalDecisionMaker
         ? `<div style="font-size:12px; color:var(--text-secondary,#666); margin-top:6px;"><span style="display:inline-block; width:10px; height:10px; background:#dce8f7; border:1px solid var(--accent); border-radius:3px; margin-right:4px; vertical-align:middle;"></span>Local decision maker</div>`
         : '';
-      // Stock Info has no line at all when absent — not every company is publicly traded, so an
+      // Stock Info has no line at all when absent: not every company is publicly traded, so an
       // empty ticker isn't a gap worth flagging the way a missing document link is.
       const stockLine = f['Stock Info']
         ? `<div>Stock info: <a href="${esc(stockInfoUrl(f['Stock Info']))}" target="_blank" onclick="event.stopPropagation()">Stock info</a></div>`
@@ -1327,7 +1327,7 @@ function renderTable() {
       const notesHtml = `<div style="margin-top:14px; padding:10px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:8px;">
         <strong>Notes</strong>
         <div style="display:flex; gap:8px; margin-top:6px; align-items:flex-start;">
-          <textarea data-notes-input="${r.id}" placeholder="No notes yet — write one and click Save" style="flex:1; padding:8px 10px; border:none; background:transparent; border-radius:4px; font:inherit; font-size:13px; resize:vertical; min-height:60px;">${esc(f['Notes'] || '')}</textarea>
+          <textarea data-notes-input="${r.id}" placeholder="No notes yet, write one and click Save" style="flex:1; padding:8px 10px; border:none; background:transparent; border-radius:4px; font:inherit; font-size:13px; resize:vertical; min-height:60px;">${esc(f['Notes'] || '')}</textarea>
           <button data-save-notes="${r.id}">Save</button>
         </div>
         <div class="status" data-notes-status="${r.id}" style="margin:4px 2px 0; min-height:14px;"></div>
@@ -1400,7 +1400,7 @@ function exportToExcel() {
     'Contact 2 Name','Contact 2 Role','Contact 2 Phone','Contact 2 Email',
     'Contact 3 Name','Contact 3 Role','Contact 3 Phone','Contact 3 Email',
     'Contact 4 Name','Contact 4 Role','Contact 4 Phone','Contact 4 Email'];
-  // A real CSV can't carry any formatting at all, so this builds an HTML table instead — Excel
+  // A real CSV can't carry any formatting at all, so this builds an HTML table instead. Excel
   // opens it natively when saved with a .xls extension. Plain CSS background-color isn't enough:
   // Excel's own HTML importer still applies its default banded Table style over it. "mso-pattern:none"
   // is Excel's own (not standard CSS) property for cell fill pattern, and is what it actually reads
@@ -1432,7 +1432,7 @@ document.getElementById('exportBtn').onclick = exportToExcel;
 
 function esc(s) { return (s||'').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-// Flags a field that's empty and worth researching, rather than silently omitting it — so gaps
+// Flags a field that's empty and worth researching, rather than silently omitting it, so gaps
 // in a company's data are obvious at a glance instead of blending into the surrounding layout.
 function missingTag() {
   return `<span style="color:#9A6400; font-style:italic; font-weight:400;">Missing</span>`;
@@ -1442,7 +1442,7 @@ function missingTag() {
 // dot and the expanded detail never disagree about whether a company has a gap.
 function hasMissingData(f) {
   // Stock Info and Notes are excluded: not every company is publicly traded, and a company with
-  // no notes yet isn't a data gap — both are optional extras, not something to chase down. County
+  // no notes yet isn't a data gap. Both are optional extras, not something to chase down. County
   // and Local Decision Maker are also excluded: the detail view no longer flags either one
   // individually (County is only ever shown grouped under each city, and Local Decision Maker
   // only shows via the per-contact dot/legend when a contact is matched to it), so checking them
@@ -1549,7 +1549,7 @@ function openForm(id) {
       <div class="field"><label>Company</label><input id="fCompany" value="${esc(f.Company)}"></div>
       <div class="field"><label>Company Type</label><div id="fCompanyTypeDD"></div></div>
       <div class="field"><label>Website</label><input id="fWebsite" value="${esc(f.Website)}"> <button type="button" id="suggestWebsiteBtn">Suggest</button>
-        <div style="font-size:12px; color:#9A6400; margin-top:4px;">Double-check suggested websites — they can be wrong.</div>
+        <div style="font-size:12px; color:#9A6400; margin-top:4px;">Double-check suggested websites. They can be wrong.</div>
         <div id="fWebsiteSuggestions" style="margin-top:6px; font-size:12px;"></div>
       </div>
       <div class="field"><label>Cities</label><div id="fCitiesDD"></div></div>
@@ -1598,7 +1598,7 @@ function openForm(id) {
         return;
       }
       websiteSuggestionsEl.innerHTML = results.slice(0, 5).map(r =>
-        `<button type="button" class="website-suggestion-btn" data-domain="${esc(r.domain)}" style="margin:2px 4px 2px 0; font-size:12px; padding:3px 8px;">${esc(r.name || r.domain)} — ${esc(r.domain)}</button>`
+        `<button type="button" class="website-suggestion-btn" data-domain="${esc(r.domain)}" style="margin:2px 4px 2px 0; font-size:12px; padding:3px 8px;">${esc(r.name || r.domain)}: ${esc(r.domain)}</button>`
       ).join('');
     } catch (e) {
       websiteSuggestionsEl.textContent = "Couldn't look this up right now.";
@@ -1733,7 +1733,7 @@ function openForm(id) {
     overlay.querySelector('#fDocLinksContainer').insertAdjacentHTML('beforeend', docLinkRowHtml(''));
   };
 
-  // Unlike contacts, there's no minimum slot to preserve — removing the last link just empties the
+  // Unlike contacts, there's no minimum slot to preserve: removing the last link just empties the
   // container, and the saved field ends up empty too.
   overlay.querySelector('#fDocLinksContainer').addEventListener('click', (e) => {
     const removeBtn = e.target.closest('.remove-doc-link-btn');
@@ -1742,7 +1742,7 @@ function openForm(id) {
   });
 
   // Each checkbox is a convenience that copies a contact's name into its free-text field (Main
-  // Contact / Local Decision Maker) — neither is a stored link, just a name copied at this moment.
+  // Contact / Local Decision Maker), neither is a stored link, just a name copied at this moment.
   // A later edit to that contact's name in *this* edit session still updates the field live (see
   // the input listener below), but the connection doesn't persist beyond it: reopening the record
   // later and renaming the contact won't retroactively follow unless the box is re-checked. The
