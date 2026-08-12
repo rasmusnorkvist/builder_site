@@ -307,7 +307,6 @@
   </a>
   <nav class="site-nav">
     <a href="#" id="navDirectoryLink">Directory</a>
-    <a href="#mapSidebar" id="navMapLink">Map</a>
     <a href="#notesBox" id="navNotesLink">Future Improvements</a>
   </nav>
 </header>
@@ -439,17 +438,6 @@ document.getElementById('notesBoxToggle').onclick = () => {
   chev.textContent = isOpen ? '▸' : '▾';
 };
 
-document.getElementById('navMapLink').onclick = (e) => {
-  e.preventDefault();
-  const sidebar = document.getElementById('mapSidebar');
-  sidebar.style.display = '';
-  if (cityMap) {
-    // The map was sized/rendered while hidden (display:none), so Leaflet needs an explicit
-    // nudge to recheck its container size once it becomes visible again.
-    setTimeout(() => { cityMap.invalidateSize(); }, 0);
-  }
-  sidebar.scrollIntoView({ behavior: 'smooth', block: 'start' });
-};
 
 function goHome(e) {
   e.preventDefault();
