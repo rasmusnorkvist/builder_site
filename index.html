@@ -255,6 +255,9 @@
   }
   .chev, .chev-col { width: 32px; text-align: center; padding-left: 14px; padding-right: 4px; }
   .chev { cursor: pointer; color: var(--text-muted); font-size: 22px; line-height: 1; transition: color .12s, transform .12s; }
+  th[data-sort] { cursor: pointer; user-select: none; }
+  th[data-sort]:hover { color: var(--accent); }
+  [data-sort-indicator] { display: inline-block; margin-left: 4px; font-size: 11px; color: var(--accent); }
   .chev:hover { color: var(--accent); }
 
   .offline-banner { background: #FDECEA; border: 1px solid #F3B4AE; color: #7A2E27; padding: 10px 16px; border-radius: 3px; font-size: 13px; margin-bottom: 12px; display: none; }
@@ -357,11 +360,11 @@
   <table id="table">
     <thead><tr>
       <th class="chev-col"></th>
-      <th>Company</th>
+      <th data-sort="Company">Company<span data-sort-indicator="Company"></span></th>
       <th><div id="ddCompanyType"></div></th>
       <th><div id="ddCity"></div></th>
       <th><div id="ddBuildingType"></div></th>
-      <th>Last edited</th>
+      <th data-sort="LastEdited">Last edited<span data-sort-indicator="LastEdited"></span></th>
       <th></th>
     </tr></thead>
     <tbody id="tbody"></tbody>
@@ -404,6 +407,22 @@ document.getElementById('collapseAllBtn').onclick = () => {
   expandedIds.clear();
   renderTable();
 };
+
+function updateSortIndicators() {
+  document.querySelectorAll('[data-sort-indicator]').forEach(el => {
+    el.textContent = el.dataset.sortIndicator === sortColumn ? (sortDirection === 'asc' ? '▲' : '▼') : '';
+  });
+}
+document.querySelectorAll('[data-sort]').forEach(th => {
+  th.onclick = () => {
+    const col = th.dataset.sort;
+    sortDirection = (sortColumn === col && sortDirection === 'asc') ? 'desc' : 'asc';
+    sortColumn = col;
+    updateSortIndicators();
+    renderTable();
+  };
+});
+updateSortIndicators();
 
 document.getElementById('mapToggleBtn').onclick = () => {
   document.getElementById('mapSidebar').style.display = 'none';
@@ -478,6 +497,8 @@ const CITY_COORDS = {"Aberdeen": [46.9754, -123.8157], "Airway Heights": [47.647
 let expandedIds = new Set();
 let activeFilters = { 'Company Type': [], 'Building Types': [], City: [] };
 let lastFilteredRows = [];
+let sortColumn = 'Company';
+let sortDirection = 'asc';
 const activeDropdowns = [];
 let companyTypeDropdown, buildingTypeDropdown, cityDropdown;
 let cityMap, cityMarkersLayer;
@@ -1223,7 +1244,17 @@ function renderTable() {
     if (!q) return true;
     return normalizeSearchText(searchBlobForCategory(searchCategory, f)).includes(q);
   });
-  rows.sort((a, b) => (a.fields.Company || '').localeCompare(b.fields.Company || ''));
+  rows.sort((a, b) => {
+    let cmp;
+    if (sortColumn === 'LastEdited') {
+      const at = new Date(a.fields[LAST_EDITED_FIELD]).getTime() || 0;
+      const bt = new Date(b.fields[LAST_EDITED_FIELD]).getTime() || 0;
+      cmp = at - bt;
+    } else {
+      cmp = (a.fields.Company || '').localeCompare(b.fields.Company || '');
+    }
+    return sortDirection === 'asc' ? cmp : -cmp;
+  });
   lastFilteredRows = rows;
   tbody.innerHTML = rows.map(r => {
     const f = r.fields;
@@ -1422,15 +1453,17 @@ function missingTag() {
 // dot and the expanded detail never disagree about whether a company has a gap.
 function hasMissingData(f) {
   // Stock Info and Notes are excluded: not every company is publicly traded, and a company with
-  // no notes yet isn't a data gap — both are optional extras, not something to chase down.
+  // no notes yet isn't a data gap — both are optional extras, not something to chase down. County
+  // and Local Decision Maker are also excluded: the detail view no longer flags either one
+  // individually (County is only ever shown grouped under each city, and Local Decision Maker
+  // only shows via the per-contact dot/legend when a contact is matched to it), so checking them
+  // here would flag rows with a gap nothing on screen actually points at.
   return !toCitiesArray(f['Company Type']).length
     || !toCitiesArray(f['Building Types']).length
     || toCitiesArray(f['Building Types']).includes('Unknown')
     || !toCitiesArray(f['Current Cities']).length
-    || !toCitiesArray(f['County']).length
     || !builderWebsite(f)
     || !f['Main Office City']
-    || !f['Local Decision Maker']
     || !f['Document link']
     || ![1,2,3,4].some(n => f[`Contact ${n} Name`]);
 }
