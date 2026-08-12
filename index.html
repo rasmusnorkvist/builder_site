@@ -1316,10 +1316,7 @@ function renderTable() {
         ${stockLine}
       </div>`;
       const mainOffice = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local office</strong> ${f['Main Office City'] ? esc(f['Main Office City']) : missingTag()}</div>`;
-      const mainContactBox = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Main contact</strong> ${f['Main Contact'] ? esc(f['Main Contact']) : `<span style="color:var(--text-secondary,#888); font-style:italic;">Not set</span>`}</div>`;
-      const localDecisionMaker = `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Local decision maker</strong> ${f['Local Decision Maker'] ? esc(f['Local Decision Maker']) : missingTag()}</div>`;
       const associatedCompany = f['Associated Company'] ? `<div style="display:inline-block; margin-bottom:12px; margin-right:8px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>Associated company</strong> ${esc(f['Associated Company'])}</div>` : '';
-      const countyBox = `<div style="display:inline-block; margin-bottom:12px; padding:6px 12px; background:var(--surface,#fff); border:1px solid var(--border-strong,#ccc); border-radius:4px; font-size:13px;"><strong>County</strong> ${toCitiesArray(f['County']).length ? esc(toCitiesArray(f['County']).join(', ')) : missingTag()}</div>`;
       function noteSection(label, value) {
         return value ? `<div style="margin-top:6px;"><strong>${esc(label)}</strong><div style="white-space:pre-wrap; font-size:13px; color:var(--text-secondary,#444);">${esc(value)}</div></div>` : '';
       }
@@ -1334,7 +1331,7 @@ function renderTable() {
         ${noteSection('Building What', f['Building What'])}
       </div>`;
       expandHtml = `<tr class="expand-row"><td colspan="7">
-        ${mainOffice}${mainContactBox}${localDecisionMaker}${associatedCompany}${countyBox}
+        ${mainOffice}${associatedCompany}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
           <div><strong>Cities (${allDisplayCities.length})</strong><div style="margin-top:6px;">${cityHtml || missingTag()}</div></div>
           <div><strong>Contacts</strong><div style="margin-top:6px;">${contactHtml}</div>${doc}</div>
