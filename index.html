@@ -1552,8 +1552,8 @@ function openForm(id) {
       <div class="field"><label>Past Cities</label><div id="fPastCitiesDD"></div></div>
       <div class="field"><label>Building Types</label><div id="fBuildingTypeDD"></div></div>
       <div class="field"><label>Local Office City</label><input id="fMainOffice" value="${esc(f['Main Office City'])}"></div>
-      <div class="field"><label>Main Contact</label><input id="fMainContact" value="${esc(f['Main Contact'])}"></div>
-      <div class="field"><label>Local Decision Maker</label><input id="fLocalDecisionMaker" value="${esc(f['Local Decision Maker'])}"></div>
+      <input type="hidden" id="fMainContact" value="${esc(f['Main Contact'])}">
+      <input type="hidden" id="fLocalDecisionMaker" value="${esc(f['Local Decision Maker'])}">
       <div class="field"><label>Associated Company</label><input id="fAssociatedCompany" value="${esc(f['Associated Company'])}"></div>
       <div class="field"><label>County</label><div id="fCountyDD"></div></div>
       <div class="field"><label>Stock Info</label><input id="fStockInfo" value="${esc(f['Stock Info'])}"></div>
