@@ -398,6 +398,9 @@
 </div>
 </div>
 <script>
+let sortColumn = 'Company';
+let sortDirection = 'asc';
+
 document.getElementById('connectToggleBtn').onclick = () => {
   const box = document.getElementById('setupBox');
   box.style.display = box.style.display === 'none' ? 'block' : 'none';
@@ -497,8 +500,6 @@ const CITY_COORDS = {"Aberdeen": [46.9754, -123.8157], "Airway Heights": [47.647
 let expandedIds = new Set();
 let activeFilters = { 'Company Type': [], 'Building Types': [], City: [] };
 let lastFilteredRows = [];
-let sortColumn = 'Company';
-let sortDirection = 'asc';
 const activeDropdowns = [];
 let companyTypeDropdown, buildingTypeDropdown, cityDropdown;
 let cityMap, cityMarkersLayer;
