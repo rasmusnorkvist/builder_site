@@ -48,13 +48,6 @@
     backdrop-filter: saturate(180%) blur(8px);
   }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .brand-mark {
-    width: 34px; height: 34px; border-radius: 2px;
-    background: var(--navy-900);
-    display: grid; place-items: center;
-    color: #fff; font-weight: 700; font-size: 15px;
-    letter-spacing: 0.5px;
-  }
   .brand-name { font-family: var(--font-heading); font-size: 18px; font-weight: 600; color: var(--navy-900); letter-spacing: -0.01em; }
   .brand-sub { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 2px; }
   .site-nav { display: flex; gap: 28px; font-size: 14px; color: var(--navy-800); font-weight: 500; }
@@ -62,8 +55,7 @@
   .site-nav a:hover { color: var(--accent); }
 
   .page-wrap { max-width: 1440px; margin: 0 auto; padding: 32px 40px 60px; }
-  .page-title { font-family: var(--font-heading); font-size: 38px; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 4px; color: var(--navy-900); }
-  .page-subtitle { color: var(--text-muted); font-size: 15px; margin: 0 0 28px; }
+  .page-title { font-family: var(--font-heading); font-size: 38px; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 24px; color: var(--navy-900); }
 
   h2 { font-family: var(--font-heading); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--navy-900); margin: 0 0 4px; }
   h3 { font-family: var(--font-heading); color: var(--navy-900); font-weight: 600; letter-spacing: -0.01em; }
@@ -309,7 +301,6 @@
 <body>
 <header class="site-header">
   <a href="#" class="brand" id="homeLink">
-    <div class="brand-mark">WA</div>
     <div>
       <div class="brand-name">Company Directory</div>
       <div class="brand-sub">Land Intelligence</div>
@@ -323,7 +314,6 @@
 </header>
 <div class="page-wrap">
 <h1 class="page-title" id="pageTitle">Company Directory (not yet connected to database)</h1>
-<p class="page-subtitle">Search, filter, and manage companies across Washington state.</p>
 <div class="page-layout">
 <div class="main-content">
 
