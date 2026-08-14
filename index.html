@@ -1395,11 +1395,12 @@ function renderTable() {
 }
 
 function exportToExcel() {
-  const headers = ['Company','Company Type','Building Types','Current Cities','Document link',
+  const headers = ['Company','Company Type','Building Types','Current Cities','Document 1','Document 2','Document 3',
     'Contact 1 Name','Contact 1 Role','Contact 1 Phone','Contact 1 Email',
     'Contact 2 Name','Contact 2 Role','Contact 2 Phone','Contact 2 Email',
     'Contact 3 Name','Contact 3 Role','Contact 3 Phone','Contact 3 Email',
-    'Contact 4 Name','Contact 4 Role','Contact 4 Phone','Contact 4 Email'];
+    'Contact 4 Name','Contact 4 Role','Contact 4 Phone','Contact 4 Email',
+    'Notes'];
   // A real CSV can't carry any formatting at all, so this builds an HTML table instead. Excel
   // opens it natively when saved with a .xls extension. Plain CSS background-color isn't enough:
   // Excel's own HTML importer still applies its default banded Table style over it. "mso-pattern:none"
@@ -1411,8 +1412,13 @@ function exportToExcel() {
   const tbodyHtml = lastFilteredRows.map(r => {
     const f = r.fields;
     const cells = headers.map(h => {
+      const docMatch = h.match(/^Document (\d)$/);
+      if (docMatch) {
+        const link = toCitiesArray(f['Document link'])[docMatch[1] - 1];
+        return `<td style="padding:4px 8px; border:1px solid #ccc; mso-pattern:none; background:none;">${link ? `<a href="${esc(link)}" target="_blank">Open document</a>` : ''}</td>`;
+      }
       let v;
-      if (h === 'Current Cities' || h === 'Building Types' || h === 'Company Type' || h === 'Document link') v = toCitiesArray(f[h]).join('; ');
+      if (h === 'Current Cities' || h === 'Building Types' || h === 'Company Type') v = toCitiesArray(f[h]).join('; ');
       else if (h.endsWith('Email')) v = cleanEmail(f[h]);
       else v = f[h] || '';
       return `<td style="padding:4px 8px; border:1px solid #ccc; mso-pattern:none; background:none;">${esc(v)}</td>`;
