@@ -2,3 +2,5 @@ node_modules/
 temporary screenshots/
 local-config.js
 Additional Company Info/
+company_document_links.csv
+get-document-links.ps1
