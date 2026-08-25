@@ -633,7 +633,7 @@ function searchBlobForCategory(category, f) {
     case 'Building Types': return toCitiesArray(f['Building Types']).join(' ').toLowerCase();
     case 'Cities': return `${[...toCitiesArray(f['Current Cities']), ...toCitiesArray(f['Past Cities'])].join(' ')} ${derivedCountiesFor(f)}`.toLowerCase();
     case 'County': return `${toCitiesArray(f['County']).join(' ')} ${derivedCountiesFor(f)}`.toLowerCase();
-    case 'Contacts': return [1,2,3,4].flatMap(n => [f[`Contact ${n} Name`], f[`Contact ${n} Role`], f[`Contact ${n} Phone`], cleanEmail(f[`Contact ${n} Email`])]).filter(Boolean).join(' ').toLowerCase();
+    case 'Contacts': return [1,2,3,4].flatMap(n => [f[`Contact ${n} Name`], f[`Contact ${n} Role`], f[`Contact ${n} Phone`], cleanEmail(f[`Contact ${n} Email`]), f[`Contact ${n} LinkedIn`]]).filter(Boolean).join(' ').toLowerCase();
     case 'Notes': return [f['Notes'], f['Building What']].filter(Boolean).join(' ').toLowerCase();
     default: return recordSearchBlob(f);
   }
@@ -1320,6 +1320,8 @@ function renderTable() {
           const phone = formatPhone(f[`Contact ${n} Phone`]);
           const email = cleanEmail(f[`Contact ${n} Email`]);
           const emailHtml = email ? `<a href="mailto:${esc(email)}" onclick="event.stopPropagation()">${esc(email)}</a>` : '';
+          const linkedin = (f[`Contact ${n} LinkedIn`] || '').trim();
+          const linkedinHtml = linkedin ? `<a href="${esc(linkedin)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">LinkedIn</a>` : '';
           const isMainContact = mainContactName && name.trim().toLowerCase() === mainContactName;
           const isLocalDecisionMaker = localDecisionMakerName && name.trim().toLowerCase() === localDecisionMakerName;
           if (isMainContact) anyContactIsMainContact = true;
@@ -1332,7 +1334,7 @@ function renderTable() {
             : '';
           return `<div style="margin-bottom:10px; font-size:13px;">
             <div style="font-weight:500;">${mainDot}${ldmDot}${esc(name)}${role ? ` (${esc(role)})` : ''}</div>
-            <div style="font-size:12px; color:var(--text-secondary,#666); white-space:nowrap;">${[esc(phone), emailHtml].filter(Boolean).join(' &middot; ')}</div>
+            <div style="font-size:12px; color:var(--text-secondary,#666); white-space:nowrap;">${[esc(phone), emailHtml, linkedinHtml].filter(Boolean).join(' &middot; ')}</div>
           </div>`;
         }).join('');
       const contactHtml = contactBlocks || missingTag();
@@ -1342,15 +1344,15 @@ function renderTable() {
       const localDecisionMakerNote = anyContactIsLocalDecisionMaker
         ? `<div style="font-size:12px; color:var(--text-secondary,#666); margin-top:6px;"><span style="display:inline-block; width:10px; height:10px; background:#dce8f7; border:1px solid var(--accent); border-radius:3px; margin-right:4px; vertical-align:middle;"></span>Local decision maker</div>`
         : '';
-      // Stock Info has no line at all when absent: not every company is publicly traded, so an
-      // empty ticker isn't a gap worth flagging the way a missing document link is.
+      // Stock Info and Document link both have no line at all when absent: not every company is
+      // publicly traded or has a document on file, so neither is a gap worth flagging.
       const stockLine = f['Stock Info']
         ? `<div>Stock info: <a href="${esc(stockInfoUrl(f['Stock Info']))}" target="_blank" onclick="event.stopPropagation()">Stock info</a></div>`
         : '';
       const docLinks = toCitiesArray(f['Document link']);
       const docLinksHtml = docLinks.length
         ? docLinks.map((link, i) => `<div>Document ${i + 1}: <a href="${esc(link)}" target="_blank" onclick="event.stopPropagation()">Open document</a></div>`).join('')
-        : `<div>Document: ${missingTag()}</div>`;
+        : '';
       const doc = `<div style="margin-top:8px; font-size:13px;">
         ${docLinksHtml}
         ${stockLine}
@@ -1407,6 +1409,7 @@ function renderTable() {
       renderTable();
     };
   });
+  tbody.querySelectorAll('[data-notes-input]').forEach(el => { autosizeTextarea(el); el.oninput = () => autosizeTextarea(el); });
   tbody.querySelectorAll('[data-edit]').forEach(b => b.onclick = (e) => { e.stopPropagation(); openForm(b.dataset.edit); });
   tbody.querySelectorAll('[data-del]').forEach(b => b.onclick = (e) => { e.stopPropagation(); deleteRecord(b.dataset.del); });
   tbody.querySelectorAll('[data-save-notes]').forEach(b => b.onclick = async (e) => {
@@ -1430,10 +1433,10 @@ function renderTable() {
 
 function exportToExcel() {
   const headers = ['Company','Company Type','Building Types','Current Cities','Document 1','Document 2','Document 3',
-    'Contact 1 Name','Contact 1 Role','Contact 1 Phone','Contact 1 Email',
-    'Contact 2 Name','Contact 2 Role','Contact 2 Phone','Contact 2 Email',
-    'Contact 3 Name','Contact 3 Role','Contact 3 Phone','Contact 3 Email',
-    'Contact 4 Name','Contact 4 Role','Contact 4 Phone','Contact 4 Email',
+    'Contact 1 Name','Contact 1 Role','Contact 1 Phone','Contact 1 Email','Contact 1 LinkedIn',
+    'Contact 2 Name','Contact 2 Role','Contact 2 Phone','Contact 2 Email','Contact 2 LinkedIn',
+    'Contact 3 Name','Contact 3 Role','Contact 3 Phone','Contact 3 Email','Contact 3 LinkedIn',
+    'Contact 4 Name','Contact 4 Role','Contact 4 Phone','Contact 4 Email','Contact 4 LinkedIn',
     'Notes'];
   // A real CSV can't carry any formatting at all, so this builds an HTML table instead. Excel
   // opens it natively when saved with a .xls extension. Plain CSS background-color isn't enough:
@@ -1472,6 +1475,11 @@ document.getElementById('exportBtn').onclick = exportToExcel;
 
 function esc(s) { return (s||'').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
+function autosizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
 // Flags a field that's empty and worth researching, rather than silently omitting it, so gaps
 // in a company's data are obvious at a glance instead of blending into the surrounding layout.
 function missingTag() {
@@ -1481,19 +1489,18 @@ function missingTag() {
 // Same set of fields missingTag() flags in the detail view, checked in one place so the list-row
 // dot and the expanded detail never disagree about whether a company has a gap.
 function hasMissingData(f) {
-  // Stock Info and Notes are excluded: not every company is publicly traded, and a company with
-  // no notes yet isn't a data gap. Both are optional extras, not something to chase down. County
-  // and Local Decision Maker are also excluded: the detail view no longer flags either one
-  // individually (County is only ever shown grouped under each city, and Local Decision Maker
-  // only shows via the per-contact dot/legend when a contact is matched to it), so checking them
-  // here would flag rows with a gap nothing on screen actually points at.
+  // Stock Info, Notes, and Document link are excluded: not every company is publicly traded, has
+  // notes yet, or has a document on file. All three are optional extras, not something to chase
+  // down. County and Local Decision Maker are also excluded: the detail view no longer flags
+  // either one individually (County is only ever shown grouped under each city, and Local
+  // Decision Maker only shows via the per-contact dot/legend when a contact is matched to it), so
+  // checking them here would flag rows with a gap nothing on screen actually points at.
   return !toCitiesArray(f['Company Type']).length
     || !toCitiesArray(f['Building Types']).length
     || toCitiesArray(f['Building Types']).includes('Unknown')
     || !toCitiesArray(f['Current Cities']).length
     || !builderWebsite(f)
     || !f['Main Office City']
-    || !f['Document link']
     || ![1,2,3,4].some(n => f[`Contact ${n} Name`]);
 }
 
@@ -1533,7 +1540,7 @@ function openForm(id) {
   const selectedPastCities = new Set(toCitiesArray(f['Past Cities']));
   const allBuildingTypes = ['APT', 'SF', 'TH', 'N/A', 'Unknown'];
   const selectedBuildingTypes = new Set(toCitiesArray(f['Building Types']));
-  const standardCompanyTypes = ['Developers', 'General contractor', 'Remodeler', 'Custom home builder', 'Subcontractor', 'City Contact', 'ADU/DADU', 'Attorney'];
+  const standardCompanyTypes = ['Developers', 'General contractor', 'Remodeler', 'Custom home builder', 'Subcontractor', 'City Contact', 'ADU/DADU', 'Attorney', 'Brokerage'];
   const existingCompanyTypes = uniqueVals('Company Type');
   const allCompanyTypes = Array.from(new Set([...standardCompanyTypes, ...existingCompanyTypes])).sort();
   const selectedCompanyTypes = new Set(toCitiesArray(f['Company Type']));
@@ -1570,6 +1577,7 @@ function openForm(id) {
       <div class="field"><label>Email</label><input id="c${n}Email" value="${esc(formattedEmail)}">
         <div id="c${n}EmailPreview" style="font-size:12px; color:var(--text-secondary,#666); margin-top:4px;">${formattedEmail ? `→ ${esc(formattedEmail)}` : ''}</div>
       </div>
+      <div class="field"><label>LinkedIn</label><input id="c${n}LinkedIn" value="${esc(f[`Contact ${n} LinkedIn`])}"></div>
       <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-main-contact-slot="${n}" ${isMainContactChecked ? 'checked' : ''}> Main contact</label>
       <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px;"><input type="checkbox" data-ldm-slot="${n}" ${isChecked ? 'checked' : ''}> Local decision maker</label>
     </div>`;
@@ -1605,7 +1613,7 @@ function openForm(id) {
         <div id="fDocLinksContainer" style="margin-top:6px;">${docLinks.map(docLinkRowHtml).join('')}</div>
         <button type="button" id="addDocLinkBtn" style="margin-top:8px;">+ Add link</button>
       </div>
-      <div class="field"><label>Notes</label><textarea id="fNotes" rows="3">${esc(f['Notes'])}</textarea></div>
+      <div class="field"><label>Notes</label><textarea id="fNotes">${esc(f['Notes'])}</textarea></div>
       <div id="contactsContainer">${activeContacts.map(contactBlockHtml).join('')}</div>
       <button type="button" id="addContactBtn" style="margin-top:8px;">+ Add contact</button>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
@@ -1617,6 +1625,10 @@ function openForm(id) {
     </div>`;
   document.body.appendChild(overlay);
   lockBodyScroll();
+
+  const fNotesEl = overlay.querySelector('#fNotes');
+  autosizeTextarea(fNotesEl);
+  fNotesEl.oninput = () => autosizeTextarea(fNotesEl);
 
   // Website suggestion via Clearbit's free, keyless company-autocomplete API. Shows several
   // candidates to pick from rather than auto-filling the first hit - common company names match
@@ -1854,6 +1866,7 @@ function openForm(id) {
       fields[`Contact ${n} Role`] = block ? block.querySelector(`#c${n}Role`).value.trim() : '';
       fields[`Contact ${n} Phone`] = block ? formatPhone(block.querySelector(`#c${n}Phone`).value) : '';
       fields[`Contact ${n} Email`] = block ? cleanEmail(block.querySelector(`#c${n}Email`).value) : '';
+      fields[`Contact ${n} LinkedIn`] = block ? block.querySelector(`#c${n}LinkedIn`).value.trim() : '';
     });
     fields['Current Cities'] = fCitiesDropdown.getSelected().join(', ');
     fields['Past Cities'] = fPastCitiesDropdown.getSelected().join(', ');
