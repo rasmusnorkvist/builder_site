@@ -1540,7 +1540,7 @@ function openForm(id) {
   const selectedPastCities = new Set(toCitiesArray(f['Past Cities']));
   const allBuildingTypes = ['APT', 'SF', 'TH', 'N/A', 'Unknown'];
   const selectedBuildingTypes = new Set(toCitiesArray(f['Building Types']));
-  const standardCompanyTypes = ['Developers', 'General contractor', 'Remodeler', 'Custom home builder', 'Subcontractor', 'City Contact', 'ADU/DADU', 'Attorney', 'Brokerage'];
+  const standardCompanyTypes = ['Developers', 'General contractor', 'Remodeler', 'Custom home builder', 'Subcontractor', 'City Contact', 'ADU/DADU', 'Attorney', 'Brokerage', 'Wealth Advisor'];
   const existingCompanyTypes = uniqueVals('Company Type');
   const allCompanyTypes = Array.from(new Set([...standardCompanyTypes, ...existingCompanyTypes])).sort();
   const selectedCompanyTypes = new Set(toCitiesArray(f['Company Type']));
